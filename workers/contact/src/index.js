@@ -181,11 +181,13 @@ function pruneTrackedClients(cutoff) {
  * `Subject` and `Reply-To`; a bare CR or LF in any of them would otherwise let
  * a caller append headers of its own.
  */
-function headerSafe(value, maxLength = 200) {
+const headerFieldMaxLength = 200;
+
+function headerSafe(value) {
 	return String(value ?? "")
 		.replace(/[\r\n\t]+/g, " ")
 		.trim()
-		.slice(0, maxLength);
+		.slice(0, headerFieldMaxLength);
 }
 
 // Deliberately permissive — it only has to admit real addresses while refusing
