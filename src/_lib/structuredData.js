@@ -1,43 +1,38 @@
 /**
  * Deliberately not in `src/_data/`. Every `.js` there is a data file, and one
  * exporting no `default` is handed to templates as the whole module namespace —
- * this file used to leak a `structuredData` global equal to
- * `{ getStructuredData }`. It is a helper, so it lives outside the cascade and
- * is imported explicitly by `src/src.11tydata.js`.
+ * this file used to leak a `structuredData` global equal to its own exports. It
+ * is a helper, so it lives outside the cascade and is imported explicitly by
+ * `src/src.11tydata.js`.
  */
-import dotenv from "dotenv";
-
-dotenv.config();
 
 /**
- * Build the page's JSON-LD. Called per page from `src/src.11tydata.js`, so
- * `page`, `metadata` and `calendar` are the values from that page's data
- * cascade — `metadata` is the page's own front matter, `calendar` is the global
- * `_data/calendar.js` export (`{ futureEvents, pastEvents }`).
+ * The page's JSON-LD schema nodes, as DATA — an array of plain objects. It is
+ * the caller that serialises, exactly once, with `jsonForScriptElement` below.
  *
- * The site's identity arrives as `site` (`_data/site.js`) rather than being held
- * here. This module used to keep a module-level `siteUrl` and read
- * `package.json` for the host, the description and the keywords — a second copy
- * of facts `_data/site.js` now owns.
+ * Called per page from `src/src.11tydata.js`, so `metadata` and `calendar` are
+ * the values from that page's data cascade — `metadata` is the page's own front
+ * matter, `calendar` is the global `_data/calendar.js` export
+ * (`{ futureEvents, pastEvents }`). The site's identity arrives as `site`
+ * (`_data/site.js`), which is the only module that holds it.
+ *
+ * It takes no `page`: which schemas a page gets is decided by the `pageType` it
+ * declares, and nothing here needs its URL. The URL used to be a second,
+ * disagreeing source for the same decision.
  */
-export async function getStructuredData(page, metadata, calendar, site) {
-	// Prioritize metadata.pageType, fallback to checking page URL
-	let pageType = metadata?.pageType;
-	if (!pageType) {
-		const pageUrlValue = page?.url || "";
-		// Check for events page
-		if (pageUrlValue.includes("/events")) {
-			pageType = "events";
-		} else if (
-			pageUrlValue === "/" ||
-			pageUrlValue === "" ||
-			pageUrlValue.endsWith("/index.html")
-		) {
-			pageType = "book";
-		} else {
-			pageType = "website";
-		}
-	}
+export function structuredDataFor(metadata, calendar, site) {
+	/**
+	 * The page's own declaration, or `"website"`. Four pages declare a `pageType`
+	 * in front matter; `/reviews/`, `/email-success/` and `/email-failure/`
+	 * declare none, and nothing defaults it in the cascade — `_data/metadata.js`
+	 * used to carry `pageType: "website"` and was deleted with the site-identity
+	 * split, so this is now the one place the default lives.
+	 *
+	 * Only `"book"` and `"events"` change the result. `"author"`, `"contact"` and
+	 * `"website"` are indistinguishable to this module and to every other reader
+	 * of the value.
+	 */
+	const pageType = metadata?.pageType ?? "website";
 
 	const structuredData = [];
 
@@ -53,14 +48,11 @@ export async function getStructuredData(page, metadata, calendar, site) {
 	};
 	structuredData.push(authorSchema);
 
-	// Book schema - for home page
-	const isHomePage =
-		pageType === "book" ||
-		page?.url === "/" ||
-		page?.url === "/index.html" ||
-		!page?.url ||
-		(page?.url && page.url.endsWith("/index.html"));
-	if (isHomePage) {
+	// Book schema - the home page only, which is the page that declares
+	// `pageType: "book"`. This used to re-derive the same fact from `page.url`
+	// in five more clauses, one of which — `!page?.url` — gave a page with no
+	// URL at all a `Book` schema.
+	if (pageType === "book") {
 		const bookSchema = {
 			"@context": "https://schema.org",
 			"@type": "Book",
@@ -86,10 +78,11 @@ export async function getStructuredData(page, metadata, calendar, site) {
 	const websiteSchema = {
 		"@context": "https://schema.org",
 		"@type": "WebSite",
-		// An abbreviated title, agreeing with neither `site.name` nor
-		// `site.bookTitle`. Left as a literal rather than quietly changing shipped
-		// output; it is one for whoever rewrites this module to compose from `site`.
-		name: "Annie Elliot - Mr & Mrs Charles Dickens",
+		// Composed from `site`, which is the only module that holds either half.
+		// This was the module's last hardcoded identity string, and it named the
+		// book by an abbreviation — "Mr & Mrs Charles Dickens" — that agreed with
+		// neither `site.name` nor `site.bookTitle`.
+		name: `${site.name} - ${site.bookTitle}`,
 		url: site.url,
 		author: {
 			"@type": "Person",
@@ -149,5 +142,43 @@ export async function getStructuredData(page, metadata, calendar, site) {
 		}
 	}
 
-	return JSON.stringify(structuredData);
+	return structuredData;
+}
+
+/**
+ * Characters that are inert in JSON but meaningful in HTML — plus the two line
+ * separators that are legal in JSON and illegal in a JavaScript string literal.
+ * `JSON.stringify` only ever emits them inside a string, never as structure, so
+ * rewriting them in the finished text cannot change the shape of the document.
+ */
+const UNSAFE_IN_HTML = /[<>&\u2028\u2029]/g;
+
+/**
+ * Serialise schema nodes for the body of a `<script type="application/ld+json">`
+ * element: valid JSON containing no character HTML can read.
+ *
+ * Each of those characters becomes its JSON `\uXXXX` escape, which denotes the
+ * same character to every JSON parser, so Google reads back exactly what went
+ * in. What it defends against is everything between here and the parser:
+ *
+ * - **A `</script>` in the data cannot terminate the element**, because the
+ *   output contains no literal `<`. An event's `summary`, `description` and
+ *   `location` come from a Google Calendar, so that text is not the site's to
+ *   trust, and HTML gives a `<script>` body no other escaping mechanism — a
+ *   `</script>` inside it ends the element no matter where it appears.
+ * - **Nothing downstream can HTML-escape what is not there.** WebC's `@raw`
+ *   turns a literal `&` into `&amp;` inside the block, and the book's title has
+ *   an ampersand, so every page's JSON-LD arrived corrupted. `eleventy.config.js`
+ *   used to carry an `unescape-json-ld` transform that regex-scanned every
+ *   finished `.html` file and reversed five entity classes back out of each
+ *   `ld+json` block — repairing the output instead of the injection, and
+ *   un-escaping `&lt;`/`&gt;` in calendar text while it was there. Escaping here
+ *   makes that transform unnecessary rather than merely unfashionable.
+ */
+export function jsonForScriptElement(nodes) {
+	return JSON.stringify(nodes).replace(
+		UNSAFE_IN_HTML,
+		(character) =>
+			"\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"),
+	);
 }

@@ -1,4 +1,7 @@
-import { getStructuredData } from "./_lib/structuredData.js";
+import {
+	jsonForScriptElement,
+	structuredDataFor,
+} from "./_lib/structuredData.js";
 
 export default {
 	layout: "./html.webc",
@@ -26,8 +29,17 @@ export default {
 		 * global data, not the page's data cascade — so `page`, `metadata` and
 		 * `calendar` all arrive empty and every page gets a byte-identical block.
 		 * `eleventyComputed` runs per page, which is what the generator needs.
+		 *
+		 * This is the one place the schema is serialised. `structuredDataFor`
+		 * returns data; `jsonForScriptElement` spells it for a `<script>` body,
+		 * escaping `<`, `>` and `&` as JSON `\uXXXX` escapes so that neither
+		 * WebC's `@raw` nor a `</script>` in a calendar event can touch it. That
+		 * is what retired the `unescape-json-ld` transform, which used to reverse
+		 * five HTML entity classes back out of every finished page.
 		 */
-		structuredDataJson: async (data) =>
-			getStructuredData(data.page, data.metadata, data.calendar, data.site),
+		structuredDataJson: (data) =>
+			jsonForScriptElement(
+				structuredDataFor(data.metadata, data.calendar, data.site),
+			),
 	},
 };
