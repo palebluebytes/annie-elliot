@@ -1,12 +1,12 @@
 <header class="u-container">
 	<img
 		webc:is="eleventy-image"
-		src="assets/images/stamps.webp"
-		alt="Two stamps with the faces of a young Mr and Mrs Dickens"
-		id="header"
+		src="assets/images/separator.webp"
+		alt=""
+		id="flourish-top"
 		loading="eager"
-		width="156, 260, 385"
-		sizes="clamp(8rem, 7rem + 4.5vw, 12rem)"
+		width="200, 360, 520"
+		sizes="clamp(6.75rem, 6.4rem + 1.4vw, 7.5rem)"
 	/>
 
 	<nav-links
@@ -30,21 +30,18 @@
 		text-align: center;
 		padding-block: var(--space-s);
 
-		#header {
-			max-width: var(--img-sm);
-			width: 100%;
-			height: auto;
-			margin: auto;
-			padding-bottom: var(--space-s);
-		}
-
+		#flourish-top,
 		#flourish-bottom {
 			max-width: var(--space-3xl);
 			margin: auto;
 			width: 100%;
 			height: auto;
-			transform: rotate(180deg);
 			padding-bottom: var(--space-s);
+		}
+
+		/* The pair mirrors: the lower one is the same motif turned to face back up. */
+		#flourish-bottom {
+			transform: rotate(180deg);
 		}
 	}
 </style>
