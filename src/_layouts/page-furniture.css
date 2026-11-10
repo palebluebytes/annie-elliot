@@ -1,7 +1,7 @@
 /* The furniture, one step above the tokens.
 
    `design-system.css` is raw material — faces, palette, the Utopia scales —
-   and says nothing about what a page looks like. This is the layer that was
+   and says nothing about what a page looks like. This is the module that was
    missing above it: the pieces every page assembles out of that material, so
    a page's own <style> block carries only what is true of that page alone.
    Without it the page-title rule was written out seven times, the
@@ -9,7 +9,7 @@
    each copy free to drift; and `design-system.css` was edited whenever any
    one page needed something.
 
-   `u-` means "defined in this shared layer": don't redefine it on a page,
+   `u-` means "defined in this shared module": don't redefine it on a page,
    override the one declaration that differs and say why at the override.
    Furniture that is markup *and* styling is a component instead — see
    src/_components/postcard-panel.webc and event-card.webc. */
