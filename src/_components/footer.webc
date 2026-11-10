@@ -28,7 +28,16 @@
 		background-color: var(--eerie-black);
 		font-family: var(--font-base);
 		text-align: center;
-		font-size: var(--font-view--2);
+		/* --step--2, not --font-view--2: the latter has never existed. The
+		   footer was authored against the type scale as it stood in Aug 2025,
+		   when --step--2 was the smallest rung, and the reference was a typo
+		   from the first commit — an invalid declaration the parser drops, so
+		   the footer silently inherited 16px from the UA default instead.
+		   Nothing visible moves: every text node in here (#quote,
+		   .footer-credits and its link) sets its own size, and the separators
+		   are `display: block` with rem-based bounds, so the footer's own
+		   font-size is what a future direct child would inherit. */
+		font-size: var(--step--2);
 		padding-block: var(--space-s);
 		color: var(--antiflash-white);
 
