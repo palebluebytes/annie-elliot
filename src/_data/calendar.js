@@ -5,15 +5,22 @@ import {
 	fetchEvents,
 	normaliseEvents,
 } from "@palebluebytes/cms/calendar/google";
-import { formatForDisplay, partition } from "../_lib/event-display.js";
+import { buildEvents } from "../_lib/event-page.js";
 
 dotenv.config();
 
 // Like src/_data/gallery.js, this module exports ONLY `default` — and now by
 // construction, because everything worth naming lives elsewhere: the transport
-// and normaliser in the package, the formatting and the partition in src/_lib/.
-// An Eleventy `_data/*.js` module with a second export is handed to templates as
-// the whole module namespace, and every loop then renders "[object Object]".
+// and normaliser in the package, the formatting, the sort and the partition in
+// src/_lib/. An Eleventy `_data/*.js` module with a second export is handed to
+// templates as the whole module namespace, and every loop then renders
+// "[object Object]".
+//
+// What is left here is SOURCE RESOLUTION, and only that: which payload the
+// events come from, which credential reaches Google, which calendar, and the
+// two things the display policy cannot know on its own — the clock and the zone
+// to guess. Everything this site decides about the events themselves is
+// `buildEvents`, which is pure and directly testable.
 
 // Public calendar id — not secret. Mirrors gallery.js's hard-coded FOLDER_ID.
 const CALENDAR_ID = "author.annie.elliot@gmail.com";
@@ -55,18 +62,11 @@ async function load() {
 }
 
 export default async function () {
-	const events = (await load())
-		// ISO strings sort as dates — one reason the package returns strings and
-		// not `Date`s. Sort while `start` is still ISO, before formatting.
-		.sort((a, b) => a.start.localeCompare(b.start))
-		// "Europe/London" is this site's truth, so it lives here. The package
-		// returns `timeZone: undefined` rather than guessing for everyone.
-		.map((event) =>
-			formatForDisplay(event, { fallbackTimeZone: "Europe/London" }),
-		);
-
-	// Needs `new Date()`, so it is site code by definition — and the clock is an
-	// argument, so it is directly unit-testable rather than only reachable
-	// through the `fetch` seam.
-	return partition(events, new Date());
+	// The clock and the zone are arguments rather than things `buildEvents` reads
+	// for itself: `new Date()` is site code by definition, and "Europe/London" is
+	// this site's truth — the package returns `timeZone: undefined` rather than
+	// guessing for everyone.
+	return buildEvents(await load(), new Date(), {
+		fallbackTimeZone: "Europe/London",
+	});
 }
