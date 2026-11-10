@@ -4,80 +4,31 @@ metadata:
   description: "Your message to Annie Elliot could not be sent. Please try again, or reach the author another way."
 ---
 
-<section id="email-failure" class="postcard u-container">
-	<h1 class="u-page-title">Message Could Not Be Sent</h1>
-	<div class="postcard-wrapper">
-		<div class="postcard-border">
-			<p class="error-message">
-				I'm sorry, but there was an issue sending your message. Please try again
-				later or contact me directly through alternative means.
-			</p>
-			<a href="/contact" class="button">Try Again</a>
-			<a href="/" class="button button-secondary">Return Home</a>
-		</div>
-	</div>
-</section>
+<postcard-panel
+	webc:nokeep
+	panel-id="email-failure"
+	heading="Message Could Not Be Sent"
+>
+	<p class="postcard-message">
+		I'm sorry, but there was an issue sending your message. Please try again
+		later or contact me directly through alternative means.
+	</p>
+	<a href="/contact" class="button">Try Again</a>
+	<a href="/" class="button button-secondary">Return Home</a>
+</postcard-panel>
 
 <style>
-	.postcard {
-		font-family: var(--font-base);
-		padding-block: var(--space-l);
-		text-align: center;
+	/* The only page with two actions, so the only page that has to rank them:
+	   "Try Again" keeps the filled treatment from
+	   src/_components/postcard-panel.webc and "Return Home" is outlined. */
+	#email-failure .button-secondary {
+		background-color: transparent;
+		color: var(--taupe);
+		border: 2px solid var(--taupe);
 
-		.postcard-wrapper {
-			display: flex;
-			justify-content: center;
-		}
-
-		.postcard-border {
-			border: 4px double var(--taupe);
-			padding: var(--space-l);
-			max-width: 600px;
-			width: 100%;
-			background: var(--antiflash-white);
-			box-shadow: 5px 5px 20px var(--shadow-medium);
-			background-image: url("https://www.transparenttextures.com/patterns/paper-fibers.png");
-		}
-
-		& .error-message {
-			font-family: var(--font-italic);
-			font-style: italic;
-			font-size: var(--step-1);
-			color: var(--black-olive);
-			line-height: 1.6;
-			margin-bottom: var(--space-l);
-			text-align: center;
-		}
-
-		& .button {
-			display: inline-block;
-			margin-top: var(--space-xs);
-			padding: var(--space-xs) var(--space-m);
-			font-family: var(--font-base);
+		&:hover {
 			background-color: var(--taupe);
 			color: var(--antiflash-white);
-			border: none;
-			font-size: var(--step-0);
-			cursor: pointer;
-			letter-spacing: 0.5px;
-			transition: background-color 0.3s ease;
-			text-decoration: none;
-			margin-right: var(--space-xs);
-
-			&:hover {
-				background-color: var(--black-olive);
-			}
-
-			&.button-secondary {
-				background-color: transparent;
-				color: var(--taupe);
-				border: 2px solid var(--taupe);
-
-				&:hover {
-					background-color: var(--taupe);
-					color: var(--antiflash-white);
-				}
-			}
 		}
 	}
 </style>

@@ -4,76 +4,16 @@ metadata:
   description: "Your message to Annie Elliot, author of Mr & Mrs Charles Dickens: Her Story, has been posted."
 ---
 
-<section id="email-success" class="postcard u-container">
-	<h1 class="u-page-title">Message Sent Successfully</h1>
-	<div class="postcard-wrapper">
-		<div class="postcard-border">
-			<p class="success-message">
-				Thank you for your message! Your letter has been posted and I will
-				respond as soon as possible.
-			</p>
-			<a href="/" class="button">Return Home</a>
-		</div>
-	</div>
-</section>
-
-<style>
-	.postcard {
-		font-family: var(--font-base);
-		padding-block: var(--space-l);
-		text-align: center;
-
-		.postcard-wrapper {
-			display: flex;
-			justify-content: center;
-		}
-
-		.postcard-border {
-			border: 4px double var(--taupe);
-			padding: var(--space-l);
-			max-width: 600px;
-			width: 100%;
-			background: var(--antiflash-white);
-			box-shadow: 5px 5px 20px var(--shadow-medium);
-			background-image: url("https://www.transparenttextures.com/patterns/paper-fibers.png");
-		}
-
-		& .success-message {
-			font-family: var(--font-italic);
-			font-style: italic;
-			font-size: var(--step-1);
-			color: var(--black-olive);
-			line-height: 1.6;
-			margin-bottom: var(--space-l);
-			text-align: center;
-		}
-
-		& .button {
-			display: inline-block;
-			margin-top: var(--space-xs);
-			padding: var(--space-xs) var(--space-m);
-			font-family: var(--font-base);
-			background-color: var(--taupe);
-			color: var(--antiflash-white);
-			border: none;
-			font-size: var(--step-0);
-			cursor: pointer;
-			letter-spacing: 0.5px;
-			transition: background-color 0.3s ease;
-			text-decoration: none;
-			margin-right: var(--space-xs);
-
-			&:hover {
-				background-color: var(--black-olive);
-			}
-
-			&.button-secondary {
-				background-color: var(--battleship-gray);
-
-				&:hover {
-					background-color: var(--taupe);
-				}
-			}
-		}
-	}
-</style>
+<!-- No <style> block left: the panel, the title, the message and the action
+	all come from postcard-panel.webc and page-furniture.css. -->
+<postcard-panel
+	webc:nokeep
+	panel-id="email-success"
+	heading="Message Sent Successfully"
+>
+	<p class="postcard-message">
+		Thank you for your message! Your letter has been posted and I will respond
+		as soon as possible.
+	</p>
+	<a href="/" class="button">Return Home</a>
+</postcard-panel>
