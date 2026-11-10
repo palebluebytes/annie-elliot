@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { structuredDataFor } from "../../src/_lib/structuredData.js";
+import {
+	jsonForScriptElement,
+	structuredDataFor,
+} from "../../src/_lib/structuredData.js";
 
 /**
  * A deliberately distinctive `site`, so an assertion on one of these values can
@@ -149,4 +152,78 @@ test("a page's own description reaches the WebSite schema", () => {
 	);
 
 	assert.equal(website.description, "What readers are saying.");
+});
+
+test("the serialised block carries no character HTML can read", () => {
+	const json = jsonForScriptElement(
+		structuredDataFor({ url: "/" }, { pageType: "book" }, {}, site),
+	);
+
+	// The book's title has an ampersand, so this block had one to escape.
+	assert.match(json, /A Book \\u0026 Its Title/);
+	for (const character of ["<", ">", "&"]) {
+		assert.equal(
+			json.includes(character),
+			false,
+			`the block should contain no literal ${character}`,
+		);
+	}
+	assert.match(json, /^\[.*\]$/s, "and it is still a JSON array");
+});
+
+test("a hostile event summary cannot terminate the script element", () => {
+	// `summary`, `description` and `location` come from a Google Calendar, so
+	// this is text the site does not control.
+	const hostile = "</script><img src=x onerror=alert(1)>";
+	const json = jsonForScriptElement(
+		structuredDataFor(
+			{ url: "/events/" },
+			{ pageType: "events" },
+			{
+				futureEvents: [
+					{
+						summary: hostile,
+						description: `A talk about <b>Mr & Mrs</b> ${hostile}`,
+						location: hostile,
+						startDateTime: "2099-09-21",
+					},
+				],
+			},
+			site,
+		),
+	);
+
+	assert.equal(
+		/<\/script/i.test(json),
+		false,
+		"nothing in the block can close the element it sits in",
+	);
+	assert.match(json, /\\u003c\/script\\u003e/);
+
+	// And it is still the data that was put in: escaped, not mangled.
+	const event = JSON.parse(json).find((node) => node["@type"] === "Event");
+	assert.equal(event.name, hostile);
+	assert.equal(event.location.name, hostile);
+	assert.equal(event.description, `A talk about <b>Mr & Mrs</b> ${hostile}`);
+});
+
+test("the serialised block round-trips every page's nodes", () => {
+	for (const [url, metadata] of [
+		["/", { pageType: "book" }],
+		["/events/", { pageType: "events" }],
+		["/author/", { pageType: "author" }],
+		["/reviews/", {}],
+	]) {
+		const nodes = structuredDataFor(
+			{ url },
+			metadata,
+			{ futureEvents: [{ summary: "Talk", startDateTime: "2099-09-21" }] },
+			site,
+		);
+		assert.deepEqual(
+			JSON.parse(jsonForScriptElement(nodes)),
+			nodes,
+			`${url} should survive serialisation unchanged`,
+		);
+	}
 });

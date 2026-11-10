@@ -104,7 +104,13 @@
 		<meta property="twitter:description" :content="metadata.description" />
 		<meta property="twitter:image" :content="site.url + site.coverImage" />
 
-		<!-- Structured Data (JSON-LD) -->
+		<!--
+			Structured Data (JSON-LD). `structuredDataJson` arrives already
+			serialised for this context by `jsonForScriptElement`
+			(`src/_lib/structuredData.js`), with `<`, `>` and `&` escaped as JSON
+			`\uXXXX`, so there is nothing here for `@raw` to mangle and nothing in
+			the body that could close this element.
+		-->
 		<script
 			type="application/ld+json"
 			webc:if="structuredDataJson"
