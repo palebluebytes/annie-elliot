@@ -14,25 +14,24 @@ const failureUrl = new URL("/email-failure/", siteOrigin).href;
 
 export default {
 	async fetch(request, env) {
-		// Handle preflight requests
-		if (request.method === "OPTIONS") {
-			return handleCors(request);
-		}
-
-		// Verify request origin
-		if (!isValidOrigin(request)) {
+		// The origin check comes first, so a disallowed origin cannot even
+		// collect a preflight answer. A cross-origin POST and its preflight both
+		// carry Origin, so nothing legitimate is lost by checking this early.
+		if (!isAllowedOrigin(request)) {
 			return new Response("Unauthorized", { status: 403 });
 		}
 
-		// Only allow POST requests
+		if (request.method === "OPTIONS") {
+			return new Response(null, { headers: corsHeaders() });
+		}
+
 		if (request.method !== "POST") {
 			return new Response("Method Not Allowed", {
 				status: 405,
-				headers: getCorsHeaders(),
+				headers: corsHeaders(),
 			});
 		}
 
-		// Process the email
 		try {
 			const formData = await request.formData();
 			const data = Object.fromEntries(formData);
@@ -45,25 +44,41 @@ export default {
 	},
 };
 
-function isValidOrigin(request) {
-	const origin =
-		request.headers.get("Origin") || request.headers.get("Referer");
+/**
+ * True only when the request carries an `Origin` that parses to exactly the
+ * site's origin.
+ *
+ * `Referer` is deliberately not accepted. The form posts cross-origin
+ * (annieelliot.co.uk -> contact.annieelliot.co.uk), so browsers always send
+ * `Origin`; `Referer` adds no reachable legitimate request and can be
+ * suppressed or forged more freely.
+ *
+ * Comparing parsed origins rather than string prefixes is what rejects
+ * `https://annieelliot.co.uk.example.com`, `https://evil.annieelliot.co.uk`,
+ * `http://annieelliot.co.uk` and `https://annieelliot.co.uk:8443`.
+ */
+function isAllowedOrigin(request) {
+	const header = request.headers.get("Origin");
+	if (!header) return false;
 
-	return origin && origin.startsWith(siteOrigin);
+	let origin;
+	try {
+		// Throws on a malformed value, and on the opaque `Origin: null` that
+		// sandboxed and privacy-stripped contexts send. Both are invalid.
+		origin = new URL(header).origin;
+	} catch {
+		return false;
+	}
+
+	return origin === siteOrigin;
 }
 
-function getCorsHeaders() {
+function corsHeaders() {
 	return {
 		"Access-Control-Allow-Origin": siteOrigin,
 		"Access-Control-Allow-Methods": "POST",
 		"Access-Control-Allow-Headers": "Content-Type",
 	};
-}
-
-function handleCors() {
-	return new Response(null, {
-		headers: getCorsHeaders(),
-	});
 }
 
 async function sendEmail(data, env) {
