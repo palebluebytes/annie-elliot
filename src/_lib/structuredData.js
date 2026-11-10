@@ -78,10 +78,11 @@ export function structuredDataFor(metadata, calendar, site) {
 	const websiteSchema = {
 		"@context": "https://schema.org",
 		"@type": "WebSite",
-		// An abbreviated title, agreeing with neither `site.name` nor
-		// `site.bookTitle`. Left as a literal rather than quietly changing shipped
-		// output; it is one for whoever rewrites this module to compose from `site`.
-		name: "Annie Elliot - Mr & Mrs Charles Dickens",
+		// Composed from `site`, which is the only module that holds either half.
+		// This was the module's last hardcoded identity string, and it named the
+		// book by an abbreviation — "Mr & Mrs Charles Dickens" — that agreed with
+		// neither `site.name` nor `site.bookTitle`.
+		name: `${site.name} - ${site.bookTitle}`,
 		url: site.url,
 		author: {
 			"@type": "Person",

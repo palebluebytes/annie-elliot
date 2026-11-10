@@ -144,6 +144,7 @@ test("the identity values come from site, not from package.json", () => {
 	assert.equal(book.author.name, "Test Author");
 	assert.equal(book.image, "https://example.test/images/cover.jpg");
 
+	assert.equal(website.name, "Test Site Name - A Book & Its Title");
 	assert.equal(website.url, "https://example.test");
 	assert.equal(website.keywords, "one, two");
 	// No page description of its own: the site-wide fallback.
