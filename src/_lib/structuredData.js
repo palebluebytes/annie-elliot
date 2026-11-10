@@ -5,22 +5,17 @@
  * `{ getStructuredData }`. It is a helper, so it lives outside the cascade and
  * is imported explicitly by `src/src.11tydata.js`.
  */
-import dotenv from "dotenv";
-
-dotenv.config();
-
 /**
- * Build the page's JSON-LD. Called per page from `src/src.11tydata.js`, so
- * `page`, `metadata` and `calendar` are the values from that page's data
- * cascade — `metadata` is the page's own front matter, `calendar` is the global
- * `_data/calendar.js` export (`{ futureEvents, pastEvents }`).
+ * The page's JSON-LD schema nodes, as DATA — an array of plain objects. It is
+ * the caller that serialises, exactly once, with `jsonForScriptElement` below.
  *
- * The site's identity arrives as `site` (`_data/site.js`) rather than being held
- * here. This module used to keep a module-level `siteUrl` and read
- * `package.json` for the host, the description and the keywords — a second copy
- * of facts `_data/site.js` now owns.
+ * Called per page from `src/src.11tydata.js`, so `page`, `metadata` and
+ * `calendar` are the values from that page's data cascade — `metadata` is the
+ * page's own front matter, `calendar` is the global `_data/calendar.js` export
+ * (`{ futureEvents, pastEvents }`). The site's identity arrives as `site`
+ * (`_data/site.js`), which is the only module that holds it.
  */
-export async function getStructuredData(page, metadata, calendar, site) {
+export function structuredDataFor(page, metadata, calendar, site) {
 	// Prioritize metadata.pageType, fallback to checking page URL
 	let pageType = metadata?.pageType;
 	if (!pageType) {
@@ -149,5 +144,5 @@ export async function getStructuredData(page, metadata, calendar, site) {
 		}
 	}
 
-	return JSON.stringify(structuredData);
+	return structuredData;
 }

@@ -1,4 +1,4 @@
-import { getStructuredData } from "./_lib/structuredData.js";
+import { structuredDataFor } from "./_lib/structuredData.js";
 
 export default {
 	layout: "./html.webc",
@@ -27,7 +27,9 @@ export default {
 		 * `calendar` all arrive empty and every page gets a byte-identical block.
 		 * `eleventyComputed` runs per page, which is what the generator needs.
 		 */
-		structuredDataJson: async (data) =>
-			getStructuredData(data.page, data.metadata, data.calendar, data.site),
+		structuredDataJson: (data) =>
+			JSON.stringify(
+				structuredDataFor(data.page, data.metadata, data.calendar, data.site),
+			),
 	},
 };
