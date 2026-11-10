@@ -3,14 +3,17 @@ import assert from "node:assert/strict";
 
 import calendar from "../../src/_data/calendar.js";
 
-// The Eleventy data module: what this SITE does with a normalised calendar —
-// which key it reads, which zone it falls back to, and the ordering and
-// future/past split the events page renders.
+// The Eleventy data module, which is now SOURCE RESOLUTION and nothing else:
+// which payload the events come from, which credential reaches Google, and
+// whether the whole listing arrives.
 //
-// The request contract and the pagination walk are tested in
-// `@palebluebytes/cms` rather than here; the formatting and the partition
-// have their own direct tests (tests/unit/event-display.test.js). This file still stubs
-// `globalThis.fetch`, because the wrapper is what fixes the module's transport.
+// This is the suite that has to own the ambient state — `globalThis.fetch` and
+// the environment — because resolving a source is what reads it. What the site
+// then DOES with the events is `src/_lib/event-page.js`, called with plain
+// objects and an injected clock in tests/unit/event-page.test.js: the sort, the
+// "Europe/London" fallback and the future/past split all live there now. The
+// request contract and the pagination walk are tested in `@palebluebytes/cms`,
+// and the formatting in tests/unit/event-display.test.js.
 
 const realFetch = globalThis.fetch;
 const realGoogleKey = process.env.GOOGLE_KEY;
@@ -34,9 +37,9 @@ function mockPages(...pages) {
 	};
 }
 
-// A timed events.list item. Dates are explicit in every test: this module
-// partitions future from past against `new Date()`, so a case that cares about
-// the partition has to say which side it is on.
+// A timed events.list item. The dates sit in 2019 and 2099 like the fixtures
+// do: this module partitions against the real `new Date()`, so a case that
+// looks at a section has to be on a side that cannot flip.
 function event(summary, startDateTime) {
 	return {
 		id: `id-${summary}`,
@@ -62,6 +65,8 @@ afterEach(() => {
 	restoreEnv("FIXTURE_DATA", realFixtureData);
 });
 
+// ------------------------------------------------------------------- failures
+
 test("throws when no API key is set", async () => {
 	delete process.env.GOOGLE_KEY;
 	mockPages({ timeZone: "Europe/London", items: [] });
@@ -80,7 +85,9 @@ test("throws on a non-OK events.list response", async () => {
 	await assert.rejects(() => calendar(), /403/);
 });
 
-test("paged events partition into future and past around now", async () => {
+// ------------------------------------------------------------- what arrives
+
+test("every page of the listing reaches the page, and cancelled events do not", async () => {
 	mockPages(
 		{
 			timeZone: "Europe/London",
@@ -104,29 +111,12 @@ test("paged events partition into future and past around now", async () => {
 	assert.deepEqual(
 		futureEvents.map((e) => e.summary),
 		["Far off"],
-		"cancelled events are still dropped",
+		"the second page arrived, and its cancelled event was dropped",
 	);
 	assert.deepEqual(
 		pastEvents.map((e) => e.summary),
 		["Long ago"],
-	);
-});
-
-test("events are ordered by start, whatever order the API returned them in", async () => {
-	mockPages({
-		timeZone: "Europe/London",
-		items: [
-			event("Third", "2099-05-04T19:00:00+00:00"),
-			event("First", "2099-03-04T19:00:00+00:00"),
-			event("Second", "2099-04-04T19:00:00+00:00"),
-		],
-	});
-
-	const { futureEvents } = await calendar();
-
-	assert.deepEqual(
-		futureEvents.map((e) => e.summary),
-		["First", "Second", "Third"],
+		"the first page arrived",
 	);
 });
 
@@ -139,42 +129,7 @@ test("an events.list body with no items yields empty sections, not a crash", asy
 	assert.deepEqual(pastEvents, []);
 });
 
-test("a timed event with no zone of its own is formatted in Europe/London", async () => {
-	// The site's fallback, which the calendar transport deliberately does not
-	// have: it returns `timeZone: undefined` rather than guessing for everyone.
-	mockPages({
-		items: [
-			{
-				...event("Summer evening", "2099-07-04T19:00:00+00:00"),
-				start: { dateTime: "2099-07-04T19:00:00+00:00" },
-				end: { dateTime: "2099-07-04T20:00:00+00:00" },
-			},
-		],
-	});
-
-	const { futureEvents } = await calendar();
-
-	// 19:00Z in July is 20:00 in London.
-	assert.equal(futureEvents[0].start, "Saturday, 4 July 2099 at 20:00");
-});
-
-test("the page's display fields are all present on every event", async () => {
-	mockPages({
-		timeZone: "Europe/London",
-		items: [event("Reading", "2099-03-04T19:00:00+00:00")],
-	});
-
-	const [e] = (await calendar()).futureEvents;
-
-	assert.equal(e.summary, "Reading");
-	assert.equal(e.description, "Reading description");
-	assert.equal(e.location, "Somewhere");
-	assert.equal(e.start, "Wednesday, 4 March 2099 at 19:00");
-	assert.equal(e.isMultiDay, false);
-	// The JSON-LD's inputs — see src/_lib/structuredData.js.
-	assert.equal(e.startDateTime, "2099-03-04T19:00:00+00:00");
-	assert.equal(e.endDateTime, "2099-03-04T19:00:00+00:00");
-});
+// ------------------------------------------------------------------- fixtures
 
 test("FIXTURE_DATA reads the checked-in payload through the same normaliser", async () => {
 	// No network, and no faked Response — the fixture is a raw events.list body,
