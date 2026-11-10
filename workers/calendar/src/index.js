@@ -1,19 +1,37 @@
 export default {
-	async scheduled(controller, env, ctx) {
-		try {
-			const response = await fetch(
-				"https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/80617396-5fc7-4d60-84e3-b46bac674064",
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-				},
+	// `scheduled` returns nothing: the runtime discards a return value, so
+	// handing it the hook's response body only looked like it meant something.
+	// Throwing is the one signal that reaches the dashboard, so every failure
+	// below rethrows.
+	async scheduled(controller, env) {
+		// The hook URL is a bearer credential: anyone holding it can start
+		// unlimited production builds. It lives in a secret on the worker, never
+		// in this repository.
+		const hookUrl = env.DEPLOY_HOOK_URL;
+		if (!hookUrl) {
+			throw new Error(
+				"DEPLOY_HOOK_URL is not set. Set it with `npx wrangler secret put DEPLOY_HOOK_URL` — see README.md.",
 			);
+		}
 
-			const data = await response.json();
-			console.log("Deploy triggered:", data);
-			return data;
+		try {
+			const response = await fetch(hookUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!response.ok) {
+				// A rotated or revoked hook answers 401/403/404 rather than
+				// failing to connect, which would otherwise look like success.
+				throw new Error(
+					`Deploy hook returned ${response.status} ${response.statusText}`,
+				);
+			}
+
+			// Never log the URL itself. The body is the deployment record.
+			console.log("Deploy triggered:", await response.text());
 		} catch (error) {
 			console.error("Error triggering deploy:", error);
 			throw error;
