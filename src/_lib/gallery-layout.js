@@ -21,11 +21,47 @@ const PREFIX_RE = /^(\d+)\s*[-_. ]\s*(.*)$/;
 // whose items carry `flex: var(--r) 1 0`), so rows remain flush and uncropped at
 // every container width — measured 647-1240px in the ticket-02 prototype.
 //
-// These three are duplicated in src/reviews.webc and tests/gallery.spec.js on
-// purpose — see AGENTS.md, "Gallery geometry is duplicated across three layers".
-const PACK_WIDTH = 1160;
-const TARGET_ROW_HEIGHT = 352; // 22rem
-const ROW_GAP = 8; // 0.5rem — must track the gallery's --gap in reviews.webc
+// This module is the one home for these numbers. The only copies left outside it
+// are tests/gallery.spec.js — a deliberate independent oracle — and the two CSS
+// lengths in src/reviews.webc that no JavaScript can reach (`--gap` and the
+// degenerate-row cap), which `tests/unit/gallery-layout.test.js` reads out of the
+// template and checks against the exports below.
+export const PACK_WIDTH = 1160;
+export const TARGET_ROW_HEIGHT = 352; // 22rem
+export const ROW_GAP = 8; // 0.5rem — the gallery's --gap in reviews.webc
+
+// How much taller than the target a row may get before the degenerate-gallery
+// cap holds it back. Only reachable with one or two photos; see reviews.webc.
+export const ROW_HEIGHT_CAP_FACTOR = 1.5;
+
+// The two tiers the thumbnails' `sizes` declares against, as the CSS spells
+// them. They used to live in the template "next to the CSS that defines them";
+// they moved here when the arithmetic did, because a `sizes` string split across
+// two files is a string neither file can be checked against. The CSS that still
+// matches on them is the single-column tier at 39.9375rem (one pixel short of
+// 40rem, deliberately) and `.photo-gallery`'s own container cap.
+const PACKED_TIER = "77.5rem"; // at and above this the container IS PACK_WIDTH
+const MOSAIC_TIER = "40rem"; // below this the mosaic is one full-width column
+
+/**
+ * What a thumbnail will actually be asked to fill, as a `sizes` attribute.
+ *
+ * The packed tier is the only one where the width is knowable in pixels: the
+ * container is frozen at PACK_WIDTH there, so an item gets its share of that
+ * width less the gaps its row spends. Below it the container is fluid and the
+ * share is declared in `vw`; below the mosaic tier every photo is full width.
+ *
+ * @param {{ratio: number, rowRatioSum: number, rowCount: number}} item The
+ *   item's own displayed ratio, its row's ratio sum and how many photos share
+ *   the row — everything the packer knows and the browser does not.
+ * @returns {string} A finished `sizes` attribute value.
+ */
+export function thumbnailSizes({ ratio, rowRatioSum, rowCount }) {
+	const share = ratio / rowRatioSum;
+	const packed = Math.round(share * (PACK_WIDTH - ROW_GAP * (rowCount - 1)));
+	const fluid = Math.round(share * 100);
+	return `(min-width: ${PACKED_TIER}) ${packed}px, (min-width: ${MOSAIC_TIER}) ${fluid}vw, 100vw`;
+}
 
 /**
  * Annie's ordering convention, read off the filename: an optional numeric
@@ -89,4 +125,35 @@ export function packRows(items) {
 	for (let to = count; to > 0; to = rowStart[to])
 		rows.unshift(items.slice(rowStart[to], to));
 	return rows; // empty input -> [] (the reconstruction loop never runs)
+}
+
+/**
+ * The packed rows with each item's geometry FINISHED — the interface the page
+ * actually needs.
+ *
+ * `packRows` alone forced every caller to restate the packer's own numbers to
+ * get anything useful out of a row: the template had to recompose `1160` and
+ * `8` to turn a share back into pixels, which is how the same formula came to
+ * have six holders. The width is knowable here and nowhere else, so this is
+ * where the `sizes` string is built.
+ *
+ * @param {{ratio: number}[]} items
+ * @returns {{ratio: number, sizes: string}[][]} The same objects, grouped and
+ *   decorated in place — never copies.
+ */
+export function layOutRows(items) {
+	const rows = packRows(items);
+
+	for (const row of rows) {
+		const rowRatioSum = row.reduce((total, item) => total + item.ratio, 0);
+		for (const item of row) {
+			item.sizes = thumbnailSizes({
+				ratio: item.ratio,
+				rowRatioSum,
+				rowCount: row.length,
+			});
+		}
+	}
+
+	return rows;
 }

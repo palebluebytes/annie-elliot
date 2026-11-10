@@ -11,7 +11,7 @@
  * environment.
  */
 
-import { packRows, parseFilename, SKIP_MIME } from "./gallery-layout.js";
+import { layOutRows, parseFilename, SKIP_MIME } from "./gallery-layout.js";
 
 /**
  * @param {object[]} photos Normalised photos, as
@@ -66,23 +66,14 @@ export function buildGallery(photos, { mediaSrc }) {
 		})
 		.map(({ _order, _name, ...item }, index) => ({ ...item, index }));
 
-	const rows = packRows(displayed);
-
-	// `share` is the fraction of its row's width the photo occupies and `rowCount`
-	// how many photos share that row — together the input to the per-item `sizes`
-	// strings composed in reviews.webc. `rowRatioSum` feeds the row's degenerate-
-	// gallery width cap. All three are set here because only the packer knows the
-	// row, and because a nested `webc:for` does not keep the outer loop's variable
-	// in scope for a descendant's attributes; the breakpoint constants stay in the
-	// template, next to the CSS that defines them.
-	for (const row of rows) {
-		const ratioSum = row.reduce((total, item) => total + item.ratio, 0);
-		for (const item of row) {
-			item.share = item.ratio / ratioSum;
-			item.rowCount = row.length;
-			item.rowRatioSum = ratioSum;
-		}
-	}
+	// Each item comes back with its `sizes` attribute finished. `share`,
+	// `rowCount` and `rowRatioSum` used to be set here instead, and reviews.webc
+	// recomposed PACK_WIDTH and ROW_GAP to turn them back into the pixel width
+	// the packer had already computed. The decoration still happens where the
+	// packer is, for the same reason as before — only it knows the row, and a
+	// nested `webc:for` does not keep the outer loop's variable in scope for a
+	// descendant's attributes.
+	const rows = layOutRows(displayed);
 
 	// `rows` (grouped, for the mosaic) and `photos` (flat, for the lightbox and
 	// the #photo-N anchors) hold the SAME objects. Load-bearing: the decoration

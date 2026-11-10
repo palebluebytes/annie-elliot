@@ -1,10 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
+	layOutRows,
 	packRows,
 	parseFilename,
+	PACK_WIDTH,
+	ROW_GAP,
+	ROW_HEIGHT_CAP_FACTOR,
 	SKIP_MIME,
+	TARGET_ROW_HEIGHT,
+	thumbnailSizes,
 } from "../../src/_lib/gallery-layout.js";
 
 // The site's own presentation layer: nothing here touches Google, the network or
@@ -110,10 +117,12 @@ test("every row lands within a sane band of the target height", () => {
 	// The DP costs EVERY row including the last, which is what keeps the final
 	// row flush and near-target instead of ragged. Greedy strands the tail at
 	// 0.90-1.31x the target; DP holds 1.00-1.16x on this input.
-	const PACK_WIDTH = 1160;
-	const ROW_GAP = 8;
-	const TARGET_ROW_HEIGHT = 352;
-
+	//
+	// The three constants are IMPORTED, not restated. This file used to carry its
+	// own copy of them — a third copy, inside the white-box test of the very
+	// module that owns them, which `tests/gallery.spec.js`'s oracle argument does
+	// not justify: an oracle is only independent if it asserts against the
+	// rendered DOM, as that one does.
 	for (const row of packRows(items(LIVE_RATIOS))) {
 		const ratioSum = row.reduce((sum, item) => sum + item.ratio, 0);
 		const height = (PACK_WIDTH - ROW_GAP * (row.length - 1)) / ratioSum;
@@ -123,4 +132,84 @@ test("every row lands within a sane band of the target height", () => {
 			`row height ${height.toFixed(1)} is ${factor.toFixed(2)}x the target`,
 		);
 	}
+});
+
+// ------------------------------------------------------------ thumbnailSizes
+
+test("the sizes string is the one ticket 03 measured for symposium1", () => {
+	// Independent source of truth: ticket 03 measured this string for the widest
+	// photo of the live eleven (1282x736, third of a 0.75 + 0.75 + 1.7418 row) and
+	// tests/gallery.spec.js quotes it in its own comment. Asserted as a literal
+	// rather than recomputed, so this test can disagree with the module.
+	assert.equal(
+		thumbnailSizes({
+			ratio: 1282 / 736,
+			rowRatioSum: 0.75 + 0.75 + 1282 / 736,
+			rowCount: 3,
+		}),
+		"(min-width: 77.5rem) 615px, (min-width: 40rem) 54vw, 100vw",
+	);
+});
+
+test("lay-out hands every item its own finished sizes string", () => {
+	// The whole point of the ticket: the template composes no arithmetic, so a
+	// drift in the formula reds this test instead of quietly lying to the browser
+	// about how wide the image will be. symposium1 is last of the eleven and
+	// third of its row, and its string is ticket 03's measurement.
+	const rows = layOutRows(items(LIVE_RATIOS));
+	const flattened = rows.flat();
+
+	assert.equal(flattened.length, LIVE_RATIOS.length);
+	for (const [i, item] of flattened.entries()) {
+		assert.match(
+			item.sizes,
+			/^\(min-width: 77\.5rem\) \d+px, \(min-width: 40rem\) \d+vw, 100vw$/,
+			`photo ${i} carries a finished sizes string`,
+		);
+	}
+	assert.equal(
+		flattened.at(-1).sizes,
+		"(min-width: 77.5rem) 615px, (min-width: 40rem) 54vw, 100vw",
+	);
+});
+
+test("lay-out groups the same objects it was given — never copies", () => {
+	const photos = items(LIVE_RATIOS);
+	const flattened = layOutRows(photos).flat();
+
+	for (const [i, item] of flattened.entries()) {
+		assert.equal(item, photos[i], `row item ${i} IS photos[${i}]`);
+	}
+});
+
+// ------------------------------------------------- the two lengths CSS must own
+
+// Everything above this line is the single home for the geometry. Two lengths
+// cannot live there, because CSS cannot import JavaScript: the gap the rows are
+// actually drawn with, and the degenerate-row cap, which has to be a `calc` the
+// browser evaluates per item. They are read back out of the template here, so a
+// drift between the two sides fails a unit test instead of quietly making the
+// `sizes` attribute lie about how wide the image will be.
+const REVIEWS_WEBC = readFileSync(
+	new URL("../../src/reviews.webc", import.meta.url),
+	"utf8",
+);
+
+// Both files are written against a 16px root: --grid-max-width's 77.5rem is the
+// 1240px container PACK_WIDTH is derived from.
+const ROOT_FONT_SIZE = 16;
+
+test("the gallery's --gap is ROW_GAP, in rem", () => {
+	const [, gap] = REVIEWS_WEBC.match(/--gap:\s*([\d.]+)rem/);
+
+	assert.equal(parseFloat(gap) * ROOT_FONT_SIZE, ROW_GAP);
+});
+
+test("the degenerate-row cap is the module's cap factor x target height", () => {
+	const [, factor, height] = REVIEWS_WEBC.match(
+		/max-width:\s*calc\(([\d.]+)\s*\*\s*([\d.]+)rem\s*\*\s*var\(--r\)\)/,
+	);
+
+	assert.equal(parseFloat(factor), ROW_HEIGHT_CAP_FACTOR);
+	assert.equal(parseFloat(height) * ROOT_FONT_SIZE, TARGET_ROW_HEIGHT);
 });
