@@ -74,14 +74,12 @@
 	--black: #000000;
 
 	/* Extended palette */
-	--taupe-dark: hsla(38, 14%, 20%, 1);
 	--cream: #fefaf2;
 	--light-beige: #d4c9b4;
 
 	/* Shadow colors */
 	--shadow-light: rgba(0, 0, 0, 0.05);
 	--shadow-medium: rgba(0, 0, 0, 0.1);
-	--shadow-dark: rgba(0, 0, 0, 0.15);
 
 	--font-base: "Playfair Display", system-ui, sans-serif;
 	--font-italic: CrimsonPro, system-ui, sans-serif;
@@ -99,7 +97,6 @@
 	--step-2: clamp(1.5rem, 1.2729rem + 0.8777vw, 1.9531rem);
 	--step-3: clamp(1.944rem, 1.7357rem + 0.9106vw, 2.4414rem);
 	--step-4: clamp(2.3328rem, 2.0317rem + 1.3162vw, 3.0518rem);
-	--step-5: clamp(2.7994rem, 2.3742rem + 1.8587vw, 3.8147rem);
 
 	/* @link https://utopia.fyi/space/calculator?c=366,18,1.2,1240,20,1.25,5,2,&s=0.75|0.5|0.25,1.5|2|3|4|6,s-l&g=s,l,xl,12 */
 	--space-3xs: clamp(0.3125rem, 0.3125rem + 0vw, 0.3125rem);
@@ -112,16 +109,6 @@
 	--space-2xl: clamp(4.5rem, 4.2906rem + 0.9153vw, 5rem);
 	--space-3xl: clamp(6.75rem, 6.4359rem + 1.373vw, 7.5rem);
 
-	/* One-up pairs */
-	--space-3xs-2xs: clamp(0.3125rem, 0.1816rem + 0.5721vw, 0.625rem);
-	--space-2xs-xs: clamp(0.5625rem, 0.4055rem + 0.6865vw, 0.9375rem);
-	--space-xs-s: clamp(0.875rem, 0.718rem + 0.6865vw, 1.25rem);
-	--space-s-m: clamp(1.125rem, 0.8109rem + 1.373vw, 1.875rem);
-	--space-m-l: clamp(1.6875rem, 1.3473rem + 1.4874vw, 2.5rem);
-	--space-l-xl: clamp(2.25rem, 1.6219rem + 2.746vw, 3.75rem);
-	--space-xl-2xl: clamp(3.375rem, 2.6945rem + 2.9748vw, 5rem);
-	--space-2xl-3xl: clamp(4.5rem, 3.2437rem + 5.492vw, 7.5rem);
-
 	/* Custom pairs */
 	--space-s-l: clamp(1.125rem, 0.5492rem + 2.5172vw, 2.5rem);
 
@@ -131,26 +118,6 @@
 		--space-s-l,
 		clamp(1.125rem, 0.5492rem + 2.5172vw, 2.5rem)
 	);
-	--grid-columns: 12;
-
-	/* Personal exploration */
-	--img-xs: clamp(5rem, 4.5rem + 2.5vw, 8rem);
-	--img-sm: clamp(8rem, 7rem + 4.5vw, 12rem);
-	--img-md: clamp(12rem, 10rem + 8vw, 20rem);
-	--img-lg: clamp(20rem, 15rem + 15vw, 30rem);
-	--img-xl: clamp(30rem, 25rem + 20vw, 45rem);
-	--img-full: 100%;
-}
-
-.u-container {
-	max-width: var(--grid-max-width);
-	padding-inline: var(--grid-gutter);
-	margin-inline: auto;
-}
-
-.u-grid {
-	display: grid;
-	gap: var(--grid-gutter);
 }
 
 html {

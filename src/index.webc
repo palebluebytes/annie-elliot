@@ -2,12 +2,13 @@
 metadata:
   title: "Mr & Mrs Charles Dickens: Her Story | A Novel by Annie Elliot"
   description: "Discover the untold story of Mrs Dickens. Annie Elliot's historical novel reveals the life of Catherine Dickens, the woman behind the famous author."
-  canonical: "https://annieelliot.co.uk/"
   pageType: "book"
 ---
 
 <section id="about" class="u-container">
-	<h1>Mr & Mrs Charles Dickens: <span>Her Story...</span></h1>
+	<h1 class="u-page-title">
+		Mr & Mrs Charles Dickens: <span>Her Story...</span>
+	</h1>
 	<h2>So the world may know he loved me once</h2>
 	<!--
 		Inert, like the retailer buttons below: the line stays on the page, but
@@ -132,15 +133,10 @@ metadata:
 	#about {
 		padding-block: var(--space-l);
 
-		h1,
-		h2 {
-			text-align: center;
-			color: var(--taupe);
-		}
-
 		h1 {
-			margin: 0;
-			font-family: var(--font-base);
+			/* No bottom margin, unlike the shared .u-page-title: the subtitle
+			   follows immediately and brings its own margin-top. */
+			margin-bottom: 0;
 
 			span {
 				font-size: var(--step-3);
@@ -148,6 +144,8 @@ metadata:
 		}
 
 		h2 {
+			text-align: center;
+			color: var(--taupe);
 			margin-top: var(--space-s);
 			margin-bottom: var(--space-xs);
 			font-size: var(--step-2);

@@ -9,11 +9,7 @@
 		sizes="clamp(6.75rem, 6.4rem + 1.4vw, 7.5rem)"
 	/>
 
-	<nav-links
-		nav-label="Main navigation"
-		font-size="var(--step-0)"
-		dot-color="var(--battleship-gray)"
-	></nav-links>
+	<nav-links></nav-links>
 	<img
 		webc:is="eleventy-image"
 		src="assets/images/separator.webp"

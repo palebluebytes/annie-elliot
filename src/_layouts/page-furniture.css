@@ -1,0 +1,52 @@
+/* The furniture, one step above the tokens.
+
+   `design-system.css` is raw material — faces, palette, the Utopia scales —
+   and says nothing about what a page looks like. This is the layer that was
+   missing above it: the pieces every page assembles out of that material, so
+   a page's own <style> block carries only what is true of that page alone.
+   Without it the page-title rule was written out seven times, the
+   section-title rule twice byte-identically, and `.postcard` three times,
+   each copy free to drift; and `design-system.css` was edited whenever any
+   one page needed something.
+
+   `u-` means "defined in this shared layer": don't redefine it on a page,
+   override the one declaration that differs and say why at the override.
+   Furniture that is markup *and* styling is a component instead — see
+   src/_components/postcard-panel.webc and event-card.webc. */
+
+.u-container {
+	max-width: var(--grid-max-width);
+	padding-inline: var(--grid-gutter);
+	margin-inline: auto;
+}
+
+.u-grid {
+	display: grid;
+	gap: var(--grid-gutter);
+}
+
+/* Every page's <h1>. No font-size: `h1` takes --step-4 from
+   design-system.css, so the title is the same size on all seven pages with or
+   without this class. The home page and /author/ override the bottom margin
+   and say why at the override. */
+.u-page-title {
+	text-align: center;
+	color: var(--taupe);
+	margin: 0 0 var(--space-l);
+	font-family: var(--font-base);
+}
+
+/* A heading opening a section below the page title: "Photo Gallery" on
+   /reviews/, "Upcoming Events" and "Past Events" on /events/. The events page
+   overrides most of this with `.section-heading` and takes the italic and the
+   weight from here. */
+.u-section-title {
+	text-align: center;
+	color: var(--taupe);
+	margin-top: var(--space-l);
+	margin-bottom: var(--space-m);
+	font-family: var(--font-italic);
+	font-style: italic;
+	font-size: var(--step-4);
+	font-weight: normal;
+}

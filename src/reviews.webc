@@ -5,7 +5,7 @@ metadata:
 ---
 
 <section id="reviews-page" class="u-container">
-	<h1>Reader Reviews</h1>
+	<h1 class="u-page-title">Reader Reviews</h1>
 
 	<section id="reviews" class="reviews-section">
 		<figure class="review-card" webc:for="review of $data.reviews">
@@ -14,7 +14,7 @@ metadata:
 		</figure>
 	</section>
 
-	<h2>Photo Gallery</h2>
+	<h2 class="u-section-title">Photo Gallery</h2>
 
 	<!--
 		Justified rows. `src/_lib/gallery-layout.js` is the one home for this
@@ -152,14 +152,6 @@ metadata:
 	<style>
 		#reviews-page {
 			padding-block: var(--space-l);
-
-			h1 {
-				text-align: center;
-				color: var(--taupe);
-				margin: 0;
-				font-family: var(--font-base);
-				margin-bottom: var(--space-l);
-			}
 		}
 
 		#reviews {
@@ -222,17 +214,6 @@ metadata:
 					font-size: inherit;
 				}
 			}
-		}
-
-		h2 {
-			text-align: center;
-			color: var(--taupe);
-			margin-top: var(--space-l);
-			margin-bottom: var(--space-m);
-			font-family: var(--font-italic);
-			font-style: italic;
-			font-size: var(--step-4);
-			font-weight: normal;
 		}
 
 		/* ---- gallery (justified rows, tight mosaic — nothing is cropped) ---- */

@@ -1,0 +1,107 @@
+<div :class="isPast ? 'event-wrapper is-past' : 'event-wrapper'">
+	<div class="event-card ornate-frame">
+		<h3 @text="event.summary"></h3>
+		<p webc:if="event.isMultiDay">
+			<strong>Dates<span class="label-colon">:</span> </strong
+			><span @text="event.start"></span> –
+			<span @text="event.end"></span>
+		</p>
+		<p webc:if="!event.isMultiDay">
+			<strong>Date<span class="label-colon">:</span> </strong
+			><span @text="event.start"></span>
+		</p>
+		<p webc:if="event.location">
+			<strong>Location<span class="label-colon">:</span> </strong
+			><a
+				:href="'https://maps.google.com?q=' + (event.location || '')"
+				:aria-label="'View location for ' + event.summary"
+				><span @text="event.location || 'View Map'"></span
+			></a>
+		</p>
+		<p @text="event.description"></p>
+	</div>
+</div>
+
+<style>
+	/* One event, framed. /events/ held this card twice, verbatim, for the
+	   future and past lists — twenty-three lines differing only in the loop
+	   source and an `is-past` class — on the most-churned file in src/, so
+	   every card change was made twice. Takes the event and the flag:
+
+	     <event-card webc:nokeep webc:for="event of …" :event="event"
+	                 :is-past="false"></event-card>
+
+	   Both are passed explicitly at both call sites: a WebC expression reading
+	   an attribute that was never given throws, and there is no `webc:setup`
+	   default to fall back on — see nav-links.webc for why no such block is
+	   wanted here. This documentation is in the stylesheet rather than an HTML
+	   comment above the markup because the markup is emitted once per event
+	   and the <style> block only once per page.
+	   The frame is `.ornate-frame`, declared by src/events.webc — the only
+	   page that renders this card, and whose featured testimonial wears the
+	   same frame. That comment says why it is not here. */
+
+	.event-wrapper {
+		margin: var(--space-m) auto;
+		max-width: 700px;
+		padding: var(--space-s);
+	}
+
+	/* Past events read as faded, but the fade composites the body text
+	   against the cream page: at 0.7 the taupe lands on #7b766c, which is
+	   4.33:1 and fails WCAG AA. 0.8 keeps the card visibly dimmed while
+	   holding the text above the 4.5:1 floor. */
+	.event-wrapper.is-past {
+		opacity: 0.8;
+	}
+
+	/* Frame comes from .ornate-frame; the border-width supplies the inset, so
+	   the card needs no padding of its own. */
+	.event-card {
+		background-color: transparent;
+		text-align: center;
+		box-shadow: none;
+		position: relative;
+	}
+
+	.event-card h3 {
+		font-family: var(--font-base);
+		color: var(--taupe);
+		font-size: var(--step-2);
+		margin-bottom: var(--space-xs);
+		margin-top: 0;
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	.event-card p {
+		font-size: var(--step-0);
+		color: var(--taupe);
+		line-height: 1.6;
+		margin: var(--space-xs) 0;
+	}
+
+	.event-card p:last-of-type {
+		margin-top: var(--space-xs);
+		font-family: var(--font-italic);
+		line-height: 1.7;
+	}
+
+	/* On phones, stack each label above its value ("Date" / "Location" on
+	   their own line, colon dropped) so long values — addresses, map links —
+	   don't crowd the label on a narrow card. */
+	@media (max-width: 40rem) {
+		.event-card p strong {
+			display: block;
+		}
+
+		.event-card p .label-colon {
+			display: none;
+		}
+	}
+
+	.event-card em {
+		font-family: var(--font-italic);
+		font-style: italic;
+	}
+</style>

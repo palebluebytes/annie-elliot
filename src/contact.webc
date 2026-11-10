@@ -2,77 +2,41 @@
 metadata:
   title: "Contact Annie Elliot | Author of Mr & Mrs Charles Dickens"
   description: "Get in touch with Annie Elliot, author of Mr & Mrs Charles Dickens, Her Story. Send a message to the author."
-  canonical: "https://annieelliot.co.uk/contact/"
   pageType: "contact"
 ---
 
-<section id="contact" class="postcard u-container">
-	<h1>Contact the Author</h1>
-	<div class="postcard-wrapper">
-		<div class="postcard-border">
-			<form action="https://contact.annieelliot.co.uk" method="post">
-				<label for="name">Dear Annie, my name is</label>
-				<input
-					type="text"
-					name="name"
-					id="name"
-					placeholder="Your Name"
-					required
-				/>
+<postcard-panel webc:nokeep panel-id="contact" heading="Contact the Author">
+	<form action="https://contact.annieelliot.co.uk" method="post">
+		<label for="name">Dear Annie, my name is</label>
+		<input type="text" name="name" id="name" placeholder="Your Name" required />
 
-				<label for="email">You may reach me at</label>
-				<input
-					type="email"
-					name="email"
-					id="email"
-					placeholder="your@email.com"
-					required
-				/>
+		<label for="email">You may reach me at</label>
+		<input
+			type="email"
+			name="email"
+			id="email"
+			placeholder="your@email.com"
+			required
+		/>
 
-				<label for="message">I wish to say...</label>
-				<textarea
-					id="message"
-					name="message"
-					rows="6"
-					placeholder="Your message here..."
-					required
-				></textarea>
+		<label for="message">I wish to say...</label>
+		<textarea
+			id="message"
+			name="message"
+			rows="6"
+			placeholder="Your message here..."
+			required
+		></textarea>
 
-				<button type="submit">Post My Message</button>
-			</form>
-		</div>
-	</div>
-</section>
+		<button type="submit">Post My Message</button>
+	</form>
+</postcard-panel>
 
 <style>
-	.postcard {
-		font-family: var(--font-base);
-		padding-block: var(--space-l);
-		text-align: center;
-
-		h1 {
-			text-align: center;
-			color: var(--taupe);
-			margin: 0;
-			font-family: var(--font-base);
-			margin-bottom: var(--space-l);
-		}
-
-		.postcard-wrapper {
-			display: flex;
-			justify-content: center;
-		}
-
-		.postcard-border {
-			border: 4px double var(--taupe);
-			padding: var(--space-l);
-			max-width: 600px;
-			width: 100%;
-			background: var(--antiflash-white);
-			box-shadow: 5px 5px 20px var(--shadow-medium);
-			background-image: url("https://www.transparenttextures.com/patterns/paper-fibers.png");
-		}
-
+	/* The letter itself. The panel around it is
+	   src/_components/postcard-panel.webc; this is the only page whose panel
+	   holds a form, so the form controls are the only thing left here. */
+	#contact {
 		& form {
 			display: flex;
 			flex-direction: column;
