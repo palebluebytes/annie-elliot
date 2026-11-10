@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { readFile } from "node:fs/promises";
 import { apiKey } from "@palebluebytes/cms/auth";
 import { fetchPhotos, normalisePhotos } from "@palebluebytes/cms/files/google";
-import { packRows, parseFilename, SKIP_MIME } from "../_lib/gallery-layout.js";
+import { buildGallery } from "../_lib/gallery-page.js";
 
 dotenv.config();
 
@@ -11,14 +11,21 @@ dotenv.config();
 // the whole module namespace, so `$data.gallery` silently becomes
 // `{default, packRows}` and every loop renders "[object Object]". Everything
 // worth naming lives elsewhere — the transport and normaliser in the package,
-// the packer and the filename rules in `src/_lib/` — and is imported here.
+// the packer, the filename rules and the whole display policy in `src/_lib/` —
+// and is imported here.
+//
+// What is left in this file is SOURCE RESOLUTION, and only that: which payload
+// the photos come from, which credential reaches Google, which folder, when an
+// answer is not believable, and where a photo's bytes live. Everything this
+// site decides about the photos themselves is `buildGallery`, which is pure and
+// directly testable.
 
 // Public folder id — not secret (it's in every share URL). Mirrors calendar.js's
 // hard-coded calendarId. Verified live in ticket 05.
 const FOLDER_ID = "1yPcvB5KwY7XdKJN2jTyEmGfErgGagmFD";
 
 /**
- * Every photo in the folder, normalised. Under FIXTURE_DATA it comes from a
+ * Every photo in the folder, normalised. Under fixtures it comes from a
  * checked-in payload instead of the live Drive folder, so the visual baselines
  * stop drifting every time Annie adds a photo (see
  * tests/fixtures/drive-files.json).
@@ -26,9 +33,19 @@ const FOLDER_ID = "1yPcvB5KwY7XdKJN2jTyEmGfErgGagmFD";
  * Only the FETCH is swapped — the fixture goes through the same normaliser the
  * live path runs, so ratios, the rotation swap and the caption fallback are all
  * still exercised, and there is no `Response` to fake.
+ *
+ * `fixtures` is a parameter rather than a second read of the environment: which
+ * side of the seam this build is on is decided ONCE, below, and the payload and
+ * the media src are then two halves of that one decision. Read separately they
+ * could in principle disagree, and a disagreement is the silent kind — fixture
+ * metadata paired with live Drive URLs renders a green build of the wrong
+ * photos.
+ *
+ * The GOOGLE_KEY guard must stay BELOW the branch: the fixture build and the
+ * Playwright suite run with no key at all. Both unit suites assert that.
  */
-async function load() {
-	if (process.env.FIXTURE_DATA) {
+async function load(fixtures) {
+	if (fixtures) {
 		return normalisePhotos(
 			JSON.parse(
 				await readFile(
@@ -79,11 +96,34 @@ async function load() {
 }
 
 /**
- * What eleventy-img is pointed at. Fixture photos are files in the repo, so they
+ * What eleventy-img is pointed at: `fixtureSrc` for the checked-in payload,
+ * `driveSrc` for the live folder. Fixture photos are files in the repo, so they
  * resolve to a path rather than a Drive media URL — the transcode pipeline treats
- * both the same.
+ * both the same. One of the two is chosen ONCE below and injected into
+ * `buildGallery`, which therefore reads no environment per photo.
  *
- * The src MUST NOT carry the API key. eleventy-img hashes the raw source string
+ * This path is CWD-RELATIVE while the fixture JSON eleven lines up is resolved
+ * module-relative via `new URL(..., import.meta.url)`. Two conventions for one
+ * fixture directory, and the asymmetry is forced rather than sloppy:
+ *
+ *   - the JSON is read by `node:fs` here and now, so it must not care where the
+ *     process was started from — `import.meta.url` is the robust base;
+ *   - this string is not read here at all. It is handed to eleventy-img as an
+ *     image `src`, and eleventy-img resolves a local src from the process CWD
+ *     (AGENTS.md, "Image `src` is relative to the working directory"). An
+ *     absolute path or a `file://` URL would also change the hash eleventy-img
+ *     folds into every output filename, which is machine-dependent and would
+ *     make `dist-test/` differ between checkouts.
+ *
+ * Both builds run from the repo root, so the two agree in practice. Unifying
+ * them would mean breaking one of the two rules above.
+ */
+function fixtureSrc(photo) {
+	return `./tests/fixtures/gallery-images/${photo.name}`;
+}
+
+/**
+ * The live folder's src. It MUST NOT carry the API key. eleventy-img hashes the raw source string
  * into every output filename (`image.js` getHash() — identical bytes at
  * `?key=AAA` and `?key=BBB` produce different filenames), so a key in the URL is
  * a key in the name of every rendition in dist/img/, and rotating it renames and
@@ -106,11 +146,7 @@ async function load() {
  * which is both a second download of the whole gallery and the exact traffic
  * shape that trips Google's IP-scoped anti-abuse throttle on media downloads.
  */
-function mediaSrc(photo) {
-	if (process.env.FIXTURE_DATA) {
-		return `./tests/fixtures/gallery-images/${photo.name}`;
-	}
-
+function driveSrc(photo) {
 	if (!photo.url) {
 		// Not a field-mask problem: `webContentLink` is in the package's own
 		// BASE_FIELDS, always requested, and `extraFields` only adds to that. Drive
@@ -133,65 +169,21 @@ function mediaSrc(photo) {
 }
 
 export default async function () {
-	const photos = (await load())
-		.filter((photo) => photo.mimeType?.startsWith("image/"))
-		.filter((photo) => {
-			// A site policy, not Google's: the package returns every mimeType and
-			// filters none of them.
-			if (SKIP_MIME.has(photo.mimeType)) {
-				console.warn(
-					`[gallery] skipping HEIC (re-export as JPEG): ${photo.name}`,
-				);
-				return false; // soft-skip, no build failure
-			}
-			return true;
-		})
-		.map((photo) => {
-			const { order, cleaned } = parseFilename(photo.name);
-			return {
-				id: photo.id,
-				// ONE never-empty field. The Drive description is the photo's text
-				// alternative (ticket 05), rendered once as the figcaption — both
-				// <img> tags carry alt="", which is only safe if a figcaption always
-				// exists to be that alternative. `photo.caption` is already
-				// non-empty (`description || name`); this refines its filename half
-				// into something readable, which is a convention of this site's and
-				// not of Drive's.
-				caption: photo.description || cleaned || photo.caption,
-				ratio: photo.ratio,
-				src: mediaSrc(photo),
-				_order: order,
-				_name: photo.name,
-			};
-		})
-		// Numbered first (ascending); prefix-less fall to the end, alpha by filename.
-		.sort((a, b) => {
-			if (a._order != null && b._order != null) return a._order - b._order;
-			if (a._order != null) return -1;
-			if (b._order != null) return 1;
-			return a._name.localeCompare(b._name);
-		})
-		.map(({ _order, _name, ...item }, index) => ({ ...item, index }));
+	// The one read of the environment in this module, and so the one place the
+	// live/fixture seam is decided: the payload and the media src are both
+	// derived from it, not re-decided per photo and not re-decided per half.
+	const fixtures = Boolean(process.env.FIXTURE_DATA);
+	const mediaSrc = fixtures ? fixtureSrc : driveSrc;
 
-	const rows = packRows(photos);
+	const { photos, rows, skipped } = buildGallery(await load(fixtures), {
+		mediaSrc,
+	});
 
-	// `share` is the fraction of its row's width the photo occupies and `rowCount`
-	// how many photos share that row — together the input to the per-item `sizes`
-	// strings composed in reviews.webc. `rowRatioSum` feeds the row's degenerate-
-	// gallery width cap. All three are set here because only the packer knows the
-	// row, and because a nested `webc:for` does not keep the outer loop's variable
-	// in scope for a descendant's attributes; the breakpoint constants stay in the
-	// template, next to the CSS that defines them.
-	for (const row of rows) {
-		const ratioSum = row.reduce((total, item) => total + item.ratio, 0);
-		for (const item of row) {
-			item.share = item.ratio / ratioSum;
-			item.rowCount = row.length;
-			item.rowRatioSum = ratioSum;
-		}
+	// The skip is `buildGallery`'s policy; saying so out loud is this module's
+	// job, because a pure module cannot have a console in it.
+	for (const name of skipped) {
+		console.warn(`[gallery] skipping HEIC (re-export as JPEG): ${name}`);
 	}
 
-	// `rows` (grouped, for the mosaic) and `photos` (flat, for the lightbox and
-	// the #photo-N anchors) hold the SAME objects.
 	return { photos, rows };
 }

@@ -3,16 +3,17 @@ import assert from "node:assert/strict";
 
 import gallery from "../../src/_data/gallery.js";
 
-// The Eleventy data module: what this SITE does with a normalised Drive folder —
-// its skip policy, its caption refinement, its ordering, and the guards it keeps
-// that the package deliberately does not.
+// The Eleventy data module, which is now SOURCE RESOLUTION and nothing else:
+// which payload the photos come from, which credential reaches Google, which
+// listing answers are not believable, and where a photo's bytes live.
 //
-// The transport and normaliser are tested in `@palebluebytes/cms` rather
-// than here; the packer has its own direct tests
-// (tests/unit/gallery-layout.test.js) — it used to be reachable only through the
-// `fetch` seam here, because this module may export nothing but `default`. This
-// file still stubs `globalThis.fetch`, since the wrapper is what fixes the
-// module's transport, but it is no longer the only way in.
+// This is the suite that has to own the ambient state — `globalThis.fetch`, the
+// environment, a `console` — because resolving a source is what reads it. What
+// the site then DOES with the photos is `src/_lib/gallery-page.js`, called with
+// plain objects in tests/unit/gallery-page.test.js: the ordering, the captions,
+// the skip policy, the rows and their shares all live there now. The transport
+// and normaliser are tested in `@palebluebytes/cms`, and the packer in
+// tests/unit/gallery-layout.test.js.
 
 const realFetch = globalThis.fetch;
 const realWarn = console.warn;
@@ -51,7 +52,7 @@ function file(name, extra = {}) {
 		mimeType: rest.mimeType ?? "image/jpeg",
 		description: rest.description,
 		modifiedTime: rest.modifiedTime ?? "2024-01-01T00:00:00.000Z",
-		// The exact string Drive returns, and what mediaSrc() builds the src from.
+		// The exact string Drive returns, and what the live src is built from.
 		webContentLink:
 			"webContentLink" in extra
 				? extra.webContentLink
@@ -86,145 +87,7 @@ afterEach(() => {
 	restoreEnv("FIXTURE_DATA", realFixtureData);
 });
 
-// ------------------------------------------------------------------- ordering
-
-test("orders by numeric prefix (1/2/10 numeric, not lexical; padding optional)", async () => {
-	mockFetch({
-		files: [
-			file("10 - j.jpg", { description: "j" }),
-			file("2 - b.jpg", { description: "b" }),
-			file("1 - a.jpg", { description: "a" }),
-			file("03 - c.jpg", { description: "c" }),
-		],
-	});
-
-	const { photos } = await gallery();
-
-	assert.deepEqual(
-		photos.map((r) => r.caption),
-		["a", "b", "c", "j"],
-	);
-});
-
-test("un-numbered files sort last, alphabetical by filename", async () => {
-	mockFetch({
-		files: [
-			file("zebra.jpg", { description: "zebra" }),
-			file("1 - first.jpg", { description: "first" }),
-			file("apple.jpg", { description: "apple" }),
-		],
-	});
-
-	const { photos } = await gallery();
-
-	assert.deepEqual(
-		photos.map((r) => r.caption),
-		["first", "apple", "zebra"],
-	);
-});
-
-// -------------------------------------------------------------------- caption
-
-test("caption = description; = cleaned filename when blank; never empty", async () => {
-	// One never-empty field, because both <img> tags carry alt="" and the
-	// figcaption is the photo's only text alternative. The transport already
-	// guarantees non-empty; what this module adds is the tidied filename.
-	mockFetch({
-		files: [
-			file("1 - x.jpg", { description: "My caption" }),
-			file("2 - hello-world.jpg", { description: "" }),
-			file("3 - a_b.jpg"), // description undefined
-		],
-	});
-
-	const { photos } = await gallery();
-
-	assert.equal(photos[0].caption, "My caption");
-	assert.equal(photos[1].caption, "hello world");
-	assert.equal(photos[2].caption, "a b");
-	for (const p of photos) {
-		assert.ok(p.caption.length > 0, "caption is never empty");
-	}
-});
-
-test("caption falls back to the raw filename when prefix strips the stem to empty", async () => {
-	// Pathological name: prefix + separator + nothing but the extension, blank
-	// description. cleaned === "" here, so the caption must fall back further.
-	mockFetch({ files: [file("01 - .jpg", { description: "" })] });
-
-	const { photos } = await gallery();
-
-	assert.equal(photos[0].caption, "01 - .jpg");
-});
-
-test("the dead `alt` field is gone — caption is the single text alternative", async () => {
-	mockFetch({ files: [file("1 - x.jpg", { description: "Only field." })] });
-
-	const { photos } = await gallery();
-
-	assert.equal(photos[0].alt, undefined);
-});
-
-// ------------------------------------------------------------- what is shown
-
-test("non-image MIME types are filtered out", async () => {
-	mockFetch({
-		files: [
-			file("1 - photo.jpg", { mimeType: "image/jpeg", description: "keep" }),
-			file("doc.pdf", { mimeType: "application/pdf" }),
-			file("clip.mp4", { mimeType: "video/mp4" }),
-		],
-	});
-
-	const { photos } = await gallery();
-
-	assert.equal(photos.length, 1);
-	assert.equal(photos[0].caption, "keep");
-});
-
-test("HEIC/HEIF skipped with a console.warn naming the file", async () => {
-	const warnings = captureWarnings();
-
-	mockFetch({
-		files: [
-			file("a.heic", { mimeType: "image/heic" }),
-			file("b.heif", { mimeType: "image/heif" }),
-			file("1 - c.jpg", { mimeType: "image/jpeg", description: "kept" }),
-		],
-	});
-
-	const { photos } = await gallery();
-
-	assert.equal(photos.length, 1);
-	assert.equal(photos[0].caption, "kept");
-	assert.equal(warnings.length, 2);
-	assert.ok(
-		warnings.some((w) => w.includes("a.heic")),
-		"warns naming a.heic",
-	);
-	assert.ok(
-		warnings.some((w) => w.includes("b.heif")),
-		"warns naming b.heif",
-	);
-});
-
-test("a list whose every file is skipped yields no rows rather than throwing", async () => {
-	// The packer's empty-input path. It can no longer be reached with an empty
-	// files.list — that is a hard failure below — but the soft-skips still get
-	// there, and HEIC-only is the realistic way.
-	captureWarnings();
-	mockFetch({
-		files: [
-			file("a.heic", { mimeType: "image/heic" }),
-			file("b.heif", { mimeType: "image/heif" }),
-		],
-	});
-
-	const { photos, rows } = await gallery();
-
-	assert.deepEqual(photos, []);
-	assert.deepEqual(rows, []);
-});
+// ------------------------------------------------------------------- the ask
 
 test("the site asks Drive for images only — the transport does not", async () => {
 	// A stray document in the folder should not cost a listing entry. The
@@ -319,61 +182,34 @@ test("throws rather than falling back to a key-bearing URL when webContentLink i
 	await assert.rejects(() => gallery(), /webContentLink/);
 });
 
-// ------------------------------------------------------------ rows and shares
+// -------------------------------------------------------------- the warning
 
-// The live gallery's exact ratios, in order.
-function liveFiles() {
-	return [
-		file("01 - Lucinda.jpg", { width: 1200, height: 1600 }), // 0.75
-		file("02 - HuntingRaven.jpg", { width: 1200, height: 1600 }), // 0.75
-		file("03 - Broadstairs.jpg", { width: 4000, height: 3000 }), // 1.3333
-		file("04 - BleakHouse.jpg", { width: 640, height: 481 }), // 1.3306
-		file("05 - Bournemouth.jpg", { width: 3000, height: 2000 }), // 1.5
-		file("06 - Rochester.jpg", { width: 4000, height: 3000 }), // 1.3333
-		file("07 - Lillian.jpg", { width: 4032, height: 3024, rotation: 1 }), // 0.75
-		file("08 - GadsHill.jpg", { width: 4032, height: 3024, rotation: 1 }), // 0.75
-		file("09 - MuseumLaunch.jpg", { width: 1200, height: 1600 }), // 0.75
-		file("Outside museum.jpg", { width: 1200, height: 1600 }), // 0.75
-		file("symposium1.png", { width: 1282, height: 736, mimeType: "image/png" }), // 1.7418
-	];
-}
+test("a skipped HEIC/HEIF is warned about by name", async () => {
+	// `buildGallery` returns the skipped names rather than warning itself, so it
+	// is this module that owns the console — and a listing whose files are all
+	// skipped is still a non-empty listing, so the hard fail above stays quiet.
+	const warnings = captureWarnings();
 
-test("rows partition the photos in order — nothing lost, nothing duplicated", async () => {
-	mockFetch({ files: liveFiles() });
+	mockFetch({
+		files: [
+			file("a.heic", { mimeType: "image/heic" }),
+			file("b.heif", { mimeType: "image/heif" }),
+			file("1 - c.jpg", { mimeType: "image/jpeg", description: "kept" }),
+		],
+	});
 
-	const { photos, rows } = await gallery();
+	const { photos } = await gallery();
 
-	const flattened = rows.flat();
-	assert.equal(flattened.length, photos.length);
-	for (const [i, item] of flattened.entries()) {
-		assert.equal(
-			item,
-			photos[i],
-			`row item ${i} IS photos[${i}] (same object)`,
-		);
-		assert.equal(item.index, i, "the flat index is the photo's position");
-	}
-});
-
-test("share is the photo's fraction of its row, and every row's shares sum to 1", async () => {
-	mockFetch({ files: liveFiles() });
-
-	const { rows } = await gallery();
-
-	for (const row of rows) {
-		const sum = row.reduce((s, item) => s + item.ratio, 0);
-		let shareSum = 0;
-		for (const item of row) {
-			assert.equal(item.share, item.ratio / sum);
-			assert.equal(item.rowCount, row.length);
-			shareSum += item.share;
-		}
-		assert.ok(Math.abs(shareSum - 1) < 1e-12, "the row's shares sum to 1");
-	}
-
-	// The first row is 0.75 + 0.75 + 1.3333 — spot-check against ticket 03's table.
-	assert.equal(rows[0][0].share.toFixed(4), "0.2647");
-	assert.equal(rows[3][2].share.toFixed(4), "0.5373");
+	assert.equal(photos.length, 1);
+	assert.equal(warnings.length, 2);
+	assert.ok(
+		warnings.some((w) => w.includes("a.heic")),
+		"warns naming a.heic",
+	);
+	assert.ok(
+		warnings.some((w) => w.includes("b.heif")),
+		"warns naming b.heif",
+	);
 });
 
 // ------------------------------------------------------------------- fixtures
@@ -396,4 +232,21 @@ test("FIXTURE_DATA reads the checked-in payload through the same normaliser", as
 		assert.ok(photo.caption.length > 0);
 		assert.ok(photo.ratio > 0);
 	}
+});
+
+test("the GOOGLE_KEY guard fires on the live path only — the fixture build has no key", async () => {
+	// The guard sits BELOW the fixture branch, and that ordering is load-bearing
+	// rather than incidental: `npm run build:fixture` and the whole Playwright
+	// suite run with no GOOGLE_KEY at all (README's testing table says so). Hoist
+	// the guard above the branch and nothing errors here — it breaks only on a
+	// machine that has no key, which is every machine except a developer's.
+	delete process.env.GOOGLE_KEY;
+	process.env.FIXTURE_DATA = "1";
+	globalThis.fetch = async () => {
+		throw new Error("the fixture path must not touch the network");
+	};
+
+	const { photos } = await gallery();
+
+	assert.ok(photos.length > 0, "the fixture payload loaded without a key");
 });
