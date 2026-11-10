@@ -26,10 +26,14 @@ templates as the **whole module namespace**. Add a second named export and
 
 Both `_data` modules satisfy this **by construction**: everything worth naming
 lives somewhere else and is imported — the Drive and Calendar transports and
-their normalisers in `@palebluebytes/cms`, the row packer and the date
-formatting in `src/_lib/` — so each `_data/*.js` file is one default export over
-imports and there is nothing to accidentally name. Add code to `src/_lib/`
-rather than a second export here.
+their normalisers in `@palebluebytes/cms`, and in `src/_lib/` the row packer
+(`gallery-layout.js`), the date formatting (`event-display.js`) and the two
+pipelines that hold this site's policy (`gallery-page.js`, `event-page.js`) — so
+each `_data/*.js` file is one default export over imports and there is nothing
+to accidentally name. Add code to `src/_lib/` rather than a second export here.
+
+`src/_data/site.js` is a plain object rather than a function, but the same rule
+binds it.
 
 ## A `_data/*.js` function is called once per build, not once per page
 
@@ -45,6 +49,27 @@ Get this wrong and every page silently receives the same value. The JSON-LD did
 exactly that — Book on all seven pages, Event on none — and nothing failed:
 the build was green, the pages rendered, and the schema was wrong everywhere.
 `tests/seo.spec.js` "Per-page structured data" is the guard.
+
+## The JSON-LD must be serialised by `jsonForScriptElement`
+
+`src/_lib/structuredData.js` returns schema **nodes**; `jsonForScriptElement`
+turns them into the text the `<script type="application/ld+json">` carries, and
+it escapes `<`, `>` and `&` as JSON `\uXXXX`.
+
+All three matter, for two different reasons. `&` because WebC's `@raw` escapes a
+literal ampersand to `&amp;` on its way into the document — and the book's title
+contains one, so **every page** ships broken JSON-LD if the serialisation is
+plain `JSON.stringify`. `<` and `>` because an event's `summary`, `description`
+and `location` come from a Google Calendar: a `</script>` in an event
+description would otherwise terminate the element and put calendar text into the
+document as markup.
+
+This used to be a transform in `eleventy.config.js` that regex-rewrote five
+entity classes inside every `ld+json` block of every built page, after the fact.
+It is gone. Serialise the nodes any other way and nothing errors: the build is
+green, the page renders, and a crawler reads `&amp;` where an ampersand belongs.
+`tests/unit/structured-data.test.js` is the guard, including the hostile-summary
+case.
 
 ## The book cover is an inline SVG, not an image file
 
@@ -101,6 +126,46 @@ that can catch the module and the page agreeing with each other but not with the
 browser. A copy inside the unit test of the owning module was not the same thing,
 and is gone.
 
+## A component's `<style>` is bundled only when the component renders
+
+Component CSS reaches the page through `getBundle('css')`, which collects the
+`<style>` of components that **actually rendered on that page**. So moving a
+shared rule into a component silently un-styles anything else that relied on it,
+on any page where the component does not appear — and nothing errors, because a
+missing rule is not an error.
+
+This is why `.ornate-frame` stayed in `src/events.webc` rather than moving into
+`src/_components/event-card.webc`: the testimonial cards on that page use it too,
+and a build that rendered no event card would have dropped it from under them.
+
+A rule shared by things that are not all components belongs in
+`src/_layouts/page-furniture.css`, which is linked by the layout and therefore
+unconditional.
+
+Related, and the reason the event card's documentation lives in its `<style>`
+block rather than above its markup: **a comment inside a component's markup is
+emitted once per render**, and nothing in this pipeline strips comments. A
+paragraph above the card's markup became seven copies of itself in
+`/events/`. The `<style>` block is emitted once per page.
+
+## `webc:setup` cannot read a component's attributes
+
+A `webc:setup` block sees the data cascade and nothing else. It **cannot** see
+the attributes the call site passed, so the usual default-value dance —
+`typeof x !== "undefined" ? x : fallback` — always takes the fallback, whatever
+the caller wrote.
+
+`src/_components/nav-links.webc` did exactly this with four parameters, and
+`src/_components/header.webc` passed `nav-label="Main navigation"` to one of
+them. It resolved to the `"Navigation"` default on every build, for as long as
+both files existed. No caller could ever have changed it, and nothing failed.
+
+Attributes _are_ readable from a component's **markup**: a `:`-prefixed
+expression receives real values, and an `@`-prefixed one receives the raw
+unevaluated string. `src/_components/event-card.webc` and
+`src/_components/postcard-panel.webc` both rely on this. If a component needs a
+default, give it one there, not in `webc:setup`.
+
 ## Fixtures are two-sided
 
 Adding a gallery photo to the fixtures needs **both**:
@@ -120,8 +185,12 @@ page under the visual baselines.
 ## Image `src` is relative to the working directory, not to `src/`
 
 `src/author.webc` uses `src="assets/images/author.jpg"` → the repo-root
-`assets/`, and `src/_components/header.webc` uses
-`src="assets/images/separator.webp"`. Both resolve from the process CWD.
+`assets/`, and `src/_components/header.webc` and `footer.webc` both use
+`src="assets/images/separator.webp"`. All of them resolve from the process CWD.
+
+Site assets that are _not_ fed through `eleventy-img` go in `src/static/`
+instead, which is passthrough-copied — that is where the postcard's paper
+texture lives, referenced as `/images/paper-fibers.png`.
 
 ## Never deploy `dist-test/`
 

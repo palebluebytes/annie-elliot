@@ -52,42 +52,59 @@ Outside Nix, Playwright will want to fetch its own browsers.
 |             |                                                                           |
 | ----------- | ------------------------------------------------------------------------- |
 | Input       | `src/` — pages are top-level `.webc` files, one layout in `src/_layouts/` |
+| Styling     | `design-system.css` = tokens, `page-furniture.css` = shared page rules    |
 | Output      | `dist/`                                                                   |
 | Components  | `src/_components/**/*.webc`, globbed by the WebC plugin                   |
-| Global data | `src/_data/` — thin wrappers over the package and `src/_lib/`             |
+| Global data | `src/_data/` — the site's identity, and source resolution only            |
 | Images      | `@11ty/eleventy-img`, at build time, for local **and** remote sources     |
 
 There are no collections. `src/sitemap.njk` uses the implicit `collections.all`.
 
 Data flows in at build time:
 
-- **`src/_data/calendar.js`** — Google Calendar `events.list`. Formats en-GB
-  display strings, handles all-day vs timed events, and partitions into
-  `futureEvents` / `pastEvents` against `new Date()`.
-- **`src/_data/gallery.js`** — Google Drive `files.list` for a public folder.
-  Derives captions and ordering from Drive metadata, computes each photo's
-  display aspect ratio, and packs the photos into justified rows.
+- **`src/_data/calendar.js`** — resolves the source (live Google Calendar
+  `events.list`, or the checked-in fixture) and hands it to
+  `_lib/event-page.js`, which does the rest.
+- **`src/_data/gallery.js`** — resolves the source (live Google Drive
+  `files.list` for a public folder, or the checked-in fixture) and hands it to
+  `_lib/gallery-page.js`, which does the rest.
+- **`src/_data/site.js`** — the site's own identity: the host, the book, the
+  author, the cover. One module, because it used to be nine places.
 - **`src/_data/reviews.json`** — static, edited in the repo.
 
-Both remote fetches are cached by `eleventy-fetch` in `.cache/`.
+**Neither remote fetch is cached.** `@palebluebytes/cms` has no runtime
+dependencies and calls `globalThis.fetch`, so the Drive and Calendar JSON are
+fetched on every build. `.cache/` belongs to `eleventy-img`, which caches the
+remote image _bytes_ — that is a different thing from the listings, and this
+file used to claim otherwise.
 
-Each `_data` module is a `default`-only wrapper — Eleventy insists on that, see
-[`AGENTS.md`](AGENTS.md) — over a package that talks to Google and two modules in
-`src/_lib/` that hold what this site decides:
+A `_data` module may export nothing but `default` — Eleventy insists on that,
+see [`AGENTS.md`](AGENTS.md) — so each one is source resolution over a package
+that talks to Google and the modules in `src/_lib/` that hold what this site
+decides:
 
-| Module                               | Holds                                                                         |
-| ------------------------------------ | ----------------------------------------------------------------------------- |
-| `@palebluebytes/cms/auth`            | `apiKey()`. An `Auth` is a function from `Request` to authorised `Request`    |
-| `@palebluebytes/cms/files/google`    | `listFiles` / `normalisePhotos` / `fetchPhotos` — displayed aspect ratios     |
-| `@palebluebytes/cms/calendar/google` | `listEvents` / `normaliseEvents` / `fetchEvents` — ISO strings, never `Date`s |
-| `_lib/gallery-layout.js`             | `packRows` / `parseFilename` / `SKIP_MIME` and the packing geometry           |
-| `_lib/event-display.js`              | en-GB date strings, and the future/past partition around a given instant      |
+| Module                               | Holds                                                                                                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@palebluebytes/cms/auth`            | `apiKey()`. An `Auth` is a function from `Request` to authorised `Request`                                                                              |
+| `@palebluebytes/cms/files/google`    | `listFiles` / `normalisePhotos` / `fetchPhotos` — displayed aspect ratios                                                                               |
+| `@palebluebytes/cms/calendar/google` | `listEvents` / `normaliseEvents` / `fetchEvents` — ISO strings, never `Date`s                                                                           |
+| `_lib/gallery-layout.js`             | `layOutRows` / `thumbnailSizes` / `parseFilename` / `SKIP_MIME`. **The one home for the gallery's geometry**, and it emits each item's finished `sizes` |
+| `_lib/gallery-page.js`               | `buildGallery(photos, {mediaSrc})` — the skip, the caption, the ordering, the packing. Pure                                                             |
+| `_lib/event-display.js`              | en-GB date strings, and the future/past partition around a given instant                                                                                |
+| `_lib/event-page.js`                 | `buildEvents(events, now, {fallbackTimeZone})` — the sort, the formatting, the partition. Pure                                                          |
+| `_lib/structuredData.js`             | `structuredDataFor` returns schema **nodes**; `jsonForScriptElement` serialises them safely                                                             |
 
 **The three `google-*` modules that used to sit in `src/_lib/` are now that
 package**, which is what they were always shaped for. It reads no environment,
 formats nothing and knows no site: the key, the folder and calendar ids, the HEIC
 skip, the ordering, the `"Europe/London"` fallback and the empty-folder hard fail
-all stay in `src/_data/` here.
+all stay here.
+
+They no longer all stay in `src/_data/`, though. The two `_data` modules keep
+only what resolving a source needs — the ids, the key guard, the fixture branch,
+the empty-listing hard fail — and the **policy** moved to `_lib/gallery-page.js`
+and `_lib/event-page.js`, which are pure and take their dependencies as
+arguments. That is why neither pure module's suite stubs `globalThis.fetch`.
 
 Two consequences of the move worth knowing. `CalendarEvent` now carries a
 four-way `kind` (`"date" | "floating" | "zoned" | "instant"`) instead of an
@@ -124,31 +141,49 @@ it means — and `direnv allow` after any `.envrc` change is the usual cause.
 Everything runs through [Playwright](https://playwright.dev/) except the unit
 tests, which use `node --test`.
 
-| Command               | Covers                                                                    |
-| --------------------- | ------------------------------------------------------------------------- |
-| `npm run test:unit`   | `src/_lib/` directly, and the two `src/_data/` wrappers — see below       |
-| `npm run test:visual` | **The whole Playwright suite** — visual, a11y, SEO, gallery, lightbox     |
-| `npm run test:seo`    | Title, description, Open Graph, canonical, JSON-LD                        |
-| `npm run test:a11y`   | `axe` against WCAG 2 A/AA over seven pages                                |
-| `npm run test:html`   | `html-validate` over a fixture build it makes itself — no key, no network |
-| `npm run test:all`    | `test:unit` → `test:seo` → `test:html`                                    |
-| `npm run test:update` | Rewrite the visual baselines after an intentional design change           |
-| `npm run report`      | Open the Playwright HTML report, including visual diffs                   |
+| Command               | Covers                                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `npm run test:unit`   | `src/_lib/` directly, and the two `src/_data/` modules — see below                                                      |
+| `npm run test:visual` | **The whole Playwright suite** — visual, a11y, SEO, gallery, lightbox                                                   |
+| `npm run test:seo`    | Title, description, Open Graph, canonical, JSON-LD                                                                      |
+| `npm run test:a11y`   | `axe` against WCAG 2 A/AA over seven pages                                                                              |
+| `npm run test:html`   | `html-validate` over a fixture build it makes itself — no key, no network                                               |
+| `npm run test:all`    | `test:unit` → `test:seo` → `test:html`                                                                                  |
+| `npm run test:update` | Rewrite the visual baselines after an intentional design change — **read the diff first**, see [`AGENTS.md`](AGENTS.md) |
+| `npm run report`      | Open the Playwright HTML report, including visual diffs                                                                 |
 
 `npm run test:visual` is named for its most expensive job but is literally
 `npx playwright test`, so it runs every spec in `tests/`.
 
-No unit suite needs `GOOGLE_KEY` or a network. `gallery-layout` and
-`event-display` are pure and called directly. No suite imports the package: its
-transports and normalisers are tested there, and the two `_data` wrappers reach
-them through the global `fetch`, so those two suites stub `globalThis.fetch`.
+No unit suite needs `GOOGLE_KEY` or a network. No suite imports the package: its
+transports and normalisers are tested there. Five of the eight suites are over
+pure modules and call them directly; only `gallery.test.js` and
+`calendar.test.js` stub `globalThis.fetch`, because source resolution is the one
+thing they are left testing.
 
-| Suite                               | Covers                                                                             |
-| ----------------------------------- | ---------------------------------------------------------------------------------- |
-| `tests/unit/gallery-layout.test.js` | Filename parsing, the skip list, and the row packer                                |
-| `tests/unit/event-display.test.js`  | en-GB formatting and the partition, against an injected clock                      |
-| `tests/unit/gallery.test.js`        | The site's ordering, caption refinement, HEIC skip, empty-folder fail, image `src` |
-| `tests/unit/calendar.test.js`       | The site's sort, its `"Europe/London"` fallback, and the fixture path              |
+| Suite                                | Covers                                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------ |
+| `tests/unit/gallery-layout.test.js`  | Filename parsing, the skip list, the row packer, and the emitted `sizes`       |
+| `tests/unit/gallery-page.test.js`    | The ordering, caption refinement, HEIC skip and row decoration. Pure           |
+| `tests/unit/event-display.test.js`   | en-GB formatting and the partition, against an injected clock                  |
+| `tests/unit/event-page.test.js`      | The sort, the `"Europe/London"` fallback and the partition. Pure               |
+| `tests/unit/structured-data.test.js` | Which schema nodes each page type gets, and that hostile event text is inert   |
+| `tests/unit/viewport.test.js`        | That a Playwright project with no declared viewport throws instead of skipping |
+| `tests/unit/gallery.test.js`         | Source resolution: the key guard, the empty-folder fail, the image `src`       |
+| `tests/unit/calendar.test.js`        | Source resolution: the key guard, the page walk, the fixture path              |
+
+The Playwright specs beyond the obvious two:
+
+| Suite                   | Covers                                                                      |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `tests/images.spec.js`  | That no page offers an image candidate above the declared ladder            |
+| `tests/gallery.spec.js` | The justified rows, against the DOM, with its own copy of the geometry      |
+| `tests/visual.spec.js`  | One named snapshot test per page, over the list in `tests/helpers/pages.js` |
+
+`tests/gallery.spec.js` restates `PACK_WIDTH` and `ROW_GAP` rather than
+importing them, **on purpose**: it is an independent oracle, and importing them
+would make it an echo of the module it checks. `tests/images.spec.js` restates
+the ladder cap for the same reason.
 
 **What is no longer tested here:** displayed aspect ratios, the caption
 guarantee, the `files.list` query, recurrence expansion, the page walk, the
