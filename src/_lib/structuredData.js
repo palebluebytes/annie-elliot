@@ -5,27 +5,22 @@
  * `{ getStructuredData }`. It is a helper, so it lives outside the cascade and
  * is imported explicitly by `src/src.11tydata.js`.
  */
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import dotenv from "dotenv";
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const packageJsonPath = join(__dirname, "../../package.json");
-const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-
-const siteUrl = "https://annieelliot.co.uk";
 
 /**
  * Build the page's JSON-LD. Called per page from `src/src.11tydata.js`, so
  * `page`, `metadata` and `calendar` are the values from that page's data
  * cascade — `metadata` is the page's own front matter, `calendar` is the global
  * `_data/calendar.js` export (`{ futureEvents, pastEvents }`).
+ *
+ * The site's identity arrives as `site` (`_data/site.js`) rather than being held
+ * here. This module used to keep a module-level `siteUrl` and read
+ * `package.json` for the host, the description and the keywords — a second copy
+ * of facts `_data/site.js` now owns.
  */
-export async function getStructuredData(page, metadata, calendar) {
+export async function getStructuredData(page, metadata, calendar, site) {
 	// Prioritize metadata.pageType, fallback to checking page URL
 	let pageType = metadata?.pageType;
 	if (!pageType) {
@@ -50,12 +45,11 @@ export async function getStructuredData(page, metadata, calendar) {
 	const authorSchema = {
 		"@context": "https://schema.org",
 		"@type": "Person",
-		name: "Annie Elliot",
-		url: siteUrl,
+		name: site.author.name,
+		url: site.url,
 		jobTitle: "Author",
-		description:
-			"Annie Elliot is the author of Mr & Mrs Charles Dickens, Her Story. She has an MA in Creative Writing and a BA (Hons) in Literary Studies.",
-		sameAs: "https://annieelliot.co.uk",
+		description: site.author.bio,
+		sameAs: site.url,
 	};
 	structuredData.push(authorSchema);
 
@@ -70,18 +64,18 @@ export async function getStructuredData(page, metadata, calendar) {
 		const bookSchema = {
 			"@context": "https://schema.org",
 			"@type": "Book",
-			name: "Mr & Mrs Charles Dickens: Her Story",
+			name: site.bookTitle,
 			author: {
 				"@type": "Person",
-				name: "Annie Elliot",
-				url: siteUrl,
+				name: site.author.name,
+				url: site.url,
 			},
 			workExample: {
 				"@type": "Book",
 				isbn: "978-1784650961",
 				bookFormat: "https://schema.org/Paperback",
 			},
-			image: siteUrl + "/images/book-cover.jpg",
+			image: site.url + site.coverImage,
 			description:
 				"The untold story of Catherine Dickens, wife of Charles Dickens, reimagining her life and marriage.",
 		};
@@ -92,28 +86,24 @@ export async function getStructuredData(page, metadata, calendar) {
 	const websiteSchema = {
 		"@context": "https://schema.org",
 		"@type": "WebSite",
+		// An abbreviated title, agreeing with neither `site.name` nor
+		// `site.bookTitle`. Left as a literal rather than quietly changing shipped
+		// output; it is one for whoever rewrites this module to compose from `site`.
 		name: "Annie Elliot - Mr & Mrs Charles Dickens",
-		url: packageJson.homepage || siteUrl,
+		url: site.url,
 		author: {
 			"@type": "Person",
-			name: "Annie Elliot",
+			name: site.author.name,
 		},
 		creator: {
 			"@type": "Organization",
 			name: "Pale Blue Bytes",
 			url: "https://palebluebytes.space",
 		},
-		description:
-			metadata?.description ||
-			packageJson.description ||
-			"A website for the novel Mr & Mrs Dickens, Her Story by the author Annie Elliot",
-		// Add software information if available
-		...(packageJson.name && { softwareVersion: packageJson.version }),
-		// Add keywords if available
-		...(packageJson.keywords &&
-			packageJson.keywords.length > 0 && {
-				keywords: packageJson.keywords.join(", "),
-			}),
+		description: metadata?.description || site.description,
+		...(site.keywords?.length > 0 && {
+			keywords: site.keywords.join(", "),
+		}),
 	};
 	structuredData.push(websiteSchema);
 
@@ -130,7 +120,7 @@ export async function getStructuredData(page, metadata, calendar) {
 						name: event.summary || "Book Event",
 						description:
 							event.description ||
-							`Book event with Annie Elliot, author of Mr & Mrs Charles Dickens`,
+							`Book event with ${site.author.name}, author of ${site.bookTitle}`,
 						startDate: event.startDateTime,
 						...(event.endDateTime && { endDate: event.endDateTime }),
 						location: {
@@ -146,8 +136,8 @@ export async function getStructuredData(page, metadata, calendar) {
 						},
 						organizer: {
 							"@type": "Person",
-							name: "Annie Elliot",
-							url: siteUrl + "/author/",
+							name: site.author.name,
+							url: site.url + "/author/",
 						},
 						eventAttendanceMode:
 							"https://schema.org/OfflineEventAttendanceMode",

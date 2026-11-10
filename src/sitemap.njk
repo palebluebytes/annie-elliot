@@ -8,7 +8,7 @@ eleventyExcludeFromCollections: true
 {% for page in collections.all %}
   {% if not page.data.eleventyExcludeFromCollections %}
   <url>
-    <loc>https://annieelliot.co.uk{{ page.url | url }}</loc>
+    <loc>{{ site.url }}{{ page.url | url }}</loc>
     <lastmod>{{ page.date | date("YYYY-MM-DD") }}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
