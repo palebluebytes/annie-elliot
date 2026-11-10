@@ -49,10 +49,14 @@ export default function (eleventyConfig) {
 			mozjpeg: true,
 		},
 
+		// No default `sizes`. Every call site states its own — the separators
+		// from a clamp, the portrait from the grid, the gallery from each
+		// photo's share of its row — so a default here was dead weight that
+		// read like a fallback: it looked as though an image could get its
+		// `sizes` from the config, and none ever does.
 		defaultAttributes: {
 			loading: "lazy",
 			decoding: "async",
-			sizes: "(max-width: 600px) 100vw, (max-width: 960px) 50vw, 600px",
 		},
 	});
 
