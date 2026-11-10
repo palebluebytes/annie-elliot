@@ -9,6 +9,12 @@ a Cloudflare Pages **deploy hook**. That starts a normal Pages build of `main`.
 
 There is no `fetch` handler. The worker is not reachable over HTTP.
 
+The hook URL is read from the **`DEPLOY_HOOK_URL` secret**, never from this
+repository. A missing secret, or a hook that answers anything other than 2xx
+(which is what a rotated or revoked hook does), throws — the only signal a cron
+has, and the reason the handler rethrows rather than swallowing. The URL itself
+is never logged.
+
 ## Why it exists
 
 Two pages are built from live remote data _at build time_:
@@ -38,13 +44,38 @@ hours; when that is too slow, retry the deployment from the Cloudflare dashboard
 ```bash
 cd workers/calendar
 npm install
+npx wrangler secret put DEPLOY_HOOK_URL   # first deploy, and after any rotation
 npx wrangler deploy
 ```
 
-The deploy hook URL is hardcoded in `src/index.js`. It carries no auth beyond
-being unguessable: **anyone who has the URL can trigger a deploy.** If it ever
-needs rotating, create a new hook in the Pages project settings and replace the
-URL.
+**Nothing takes effect until this worker is deployed.** It deploys separately
+from the site, and merging a change to the repository does not deploy it.
+
+### The deploy hook is a credential — two things only you can do
+
+A Pages deploy hook carries no auth beyond being unguessable: **anyone who has
+the URL can start unlimited production builds.** This URL, UUID and all, was
+hard-coded in `src/index.js` in a **public repository**, so it must be treated
+as leaked. Removing it from the file does not remove it from the repository's
+git history, which is why rotation is the only real fix.
+
+1. **Rotate the hook.** Cloudflare dashboard → the Pages project → _Settings_ →
+   _Builds & deployments_ → _Deploy hooks_: delete the existing hook and create
+   a new one. Copy the new URL.
+2. **Set it as a secret on this worker**, then redeploy:
+
+   ```bash
+   cd workers/calendar
+   npx wrangler secret put DEPLOY_HOOK_URL   # paste the new URL
+   npx wrangler deploy
+   ```
+
+Until both are done the daily rebuild does not run: with no secret bound the
+cron throws immediately, loudly, in the worker's logs. Nothing else on the site
+breaks — it just stops picking up Annie's changes, as described below.
+
+The secret is set with `wrangler secret put`, not in `wrangler.jsonc`; there is
+nothing to add to the configuration file, and the URL must not be committed.
 
 ## If it stops
 
