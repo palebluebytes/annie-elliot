@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { SITE_PAGES } from "./helpers/pages.js";
 
 /** Every JSON-LD node on the page, flattened out of its `<script>` arrays. */
 async function readJsonLd(page) {
@@ -119,21 +120,14 @@ test.describe("Reviews page markup", () => {
  * `/email-success/` and `/email-failure/` all told Google they were duplicates of
  * the home page.
  *
- * The host literal here is deliberately not imported from `src/_data/site.js` —
- * this is an independent oracle, like the geometry in `tests/gallery.spec.js`.
+ * The host literal below is deliberately *not* imported from `src/_data/site.js`
+ * — that is the fact under test, so this spec restates it as an independent
+ * oracle, like the geometry in `tests/gallery.spec.js`. The *list of pages* is
+ * not under test here, so it comes from `tests/helpers/pages.js` with the rest
+ * of the suite: a page added there must get a canonical too.
  */
-const EVERY_PAGE = [
-	"/",
-	"/author/",
-	"/contact/",
-	"/events/",
-	"/reviews/",
-	"/email-success/",
-	"/email-failure/",
-];
-
 test.describe("Per-page canonical", () => {
-	for (const url of EVERY_PAGE) {
+	for (const { url } of SITE_PAGES) {
 		test(`${url} names itself, not another page`, async ({ page }) => {
 			await page.goto(url);
 			const own = `https://annieelliot.co.uk${url}`;
