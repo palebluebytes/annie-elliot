@@ -10,10 +10,23 @@ metadata:
 	<h1>About the Author</h1>
 	<div>
 		<div class="u-grid main-grid">
+			<!--
+				The ladder, declared rather than inherited. The portrait's widest
+				layout is the single-column tier just under 60rem — the container's
+				content box, ~894 CSS px — and above 60rem it is one half of the
+				1160px content box less the 5rem grid gap, so 540 CSS px. 1200
+				therefore covers 2x at the wide-viewport size and 1800 covers 2x of
+				the widest the photo is ever laid out, which is also the cap
+				src/reviews.webc declares, so the site has one number.
+				Without a width here the image inherited the global ladder, and
+				before "auto" came off that list it emitted a 2837px rendition —
+				the source's full width — in both WebP and JPEG.
+			-->
 			<img
 				webc:is="eleventy-image"
 				src="assets/images/author.jpg"
 				alt="Portrait of Annie Elliot"
+				width="400, 640, 800, 1200, 1800"
 				sizes="(min-width: 60rem) 50vw, 100vw"
 			/>
 

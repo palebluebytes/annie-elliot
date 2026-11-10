@@ -1,5 +1,28 @@
 import { test, expect } from "@playwright/test";
 
+import { SITE_PAGES } from "./helpers/pages.js";
+
+// One test per page, named from the declared list in ./helpers/pages.js.
+//
+// This was a single test that crawled the homepage's internal links and
+// screenshotted everything it found in a loop. Four consequences, all of them
+// quiet:
+//
+//   - the first failing baseline aborted every page after it, so one diff hid
+//     the other six;
+//   - a failure reported "dynamic site snapshot" and named no page;
+//   - `retries: 1` re-ran all seven captures to retry one;
+//   - and the baseline filename came from the crawled href, so renaming a nav
+//     target *renamed* a baseline — a fresh capture, silently accepted, instead
+//     of a failure against the committed one.
+//
+// The crawl also could not reach /email-success/ or /email-failure/, which had
+// to be injected into its results by hand. A declared list covers them like any
+// other page, and a list cannot come back empty the way a crawl can.
+//
+// The baseline stems are unchanged: `<name>-<project>-linux.png` for each
+// `name` in SITE_PAGES.
+
 // eleventy-img emits `loading="lazy"` on every image, so below-the-fold photos
 // never decode on a plain `networkidle` wait — a full-page screenshot then
 // captures empty boxes and a too-short page. Scroll the whole page to trigger the
@@ -44,73 +67,24 @@ async function loadLazyImages(page) {
 }
 
 test.describe("Visual Regression Tests", () => {
-	test("dynamic site snapshot", async ({ page }) => {
-		// Several pages are very tall and image-heavy; capturing them all in one
-		// test needs well beyond the 30s default.
-		test.setTimeout(180_000);
+	for (const { name, url } of SITE_PAGES) {
+		test(`${name} page looks as committed`, async ({ page }) => {
+			// /events/ and /reviews/ render tall and image-heavy, and settling the
+			// lazy loads is a scroll of the whole page, so one page needs well
+			// beyond the 30s default on its own.
+			test.setTimeout(90_000);
 
-		// Step 1: Visit the Homepage
-		await page.goto("/");
-		await page.waitForLoadState("networkidle");
-
-		// Step 2: Scrape all unique internal links
-		const links = await page.evaluate(() => {
-			const anchors = Array.from(document.querySelectorAll("a"));
-			const internalLinks = new Set();
-
-			anchors.forEach((a) => {
-				const href = a.getAttribute("href");
-				// Filter for local links (starting with / or the full domain)
-				// and ignore jumplinks (#), mailto:, etc.
-				if (
-					href &&
-					(href.startsWith("/") || href.startsWith(window.location.origin)) &&
-					!href.startsWith("#") &&
-					!href.startsWith("mailto:") &&
-					!href.startsWith("tel:")
-				) {
-					// Normalize: remove domain if present to keep it relative or consistent
-					const url = new URL(a.href);
-					if (url.origin === window.location.origin) {
-						internalLinks.add(url.pathname);
-					}
-				}
-			});
-			return Array.from(internalLinks);
-		});
-
-		console.log(`Found ${links.length} internal pages to test:`, links);
-
-		// Always include homepage explicitly if not found (though it should be)
-		// Also add non-linked pages like email success/failure states
-		const uniqueLinks = new Set([
-			"/",
-			"/email-success/",
-			"/email-failure/",
-			...links,
-		]);
-
-		// Step 3 & 4: Iterate and Snapshot
-		for (const link of uniqueLinks) {
-			console.log(`Testing page: ${link}`);
-			await page.goto(link);
+			await page.goto(url);
 			await page.waitForLoadState("networkidle");
 			await loadLazyImages(page);
 
-			// Create a friendly filename from the path
-			// e.g., '/' -> 'home', '/about/' -> 'about'
-			const name =
-				link === "/"
-					? "home"
-					: link.replace(/^\/|\/$/g, "").replace(/\//g, "-");
-
-			// Some pages (e.g. /events/) render very tall with many lazy images,
-			// so a full-page capture needs longer than the 5s default to settle
-			// into two identical frames.
+			// Some pages render very tall with many lazy images, so a full-page
+			// capture needs longer than the 5s default to settle into two
+			// identical frames.
 			await expect(page).toHaveScreenshot(`${name}.png`, {
 				fullPage: true,
 				timeout: 30000,
 			});
-		}
-	});
+		});
+	}
 });

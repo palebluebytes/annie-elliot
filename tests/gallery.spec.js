@@ -28,10 +28,10 @@ function expectedSizes({ share, rowCount }) {
 	return `(min-width: 77.5rem) ${px}px, (min-width: 40rem) ${vw}vw, 100vw`;
 }
 
-// The ladder set per-image on both <eleventy-image> calls. eleventy-img
-// substitutes the source width for the first over-sized rung, so a photo may
-// emit a candidate below 1800 that is not on this list — but never above it.
-const MAX_CANDIDATE_WIDTH = 1800;
+// The ladder cap these photos declare is not a gallery rule: no page may offer
+// a candidate wider than its ladder, and the page that broke it was /author/,
+// which this spec never visits. That guard lives in `tests/images.spec.js` and
+// runs against every page.
 
 /**
  * Force the thumbnails to load and wait for them.
@@ -298,22 +298,6 @@ test.describe("Reviews photo gallery (justified rows)", () => {
 				/^min\(72rem, 100vw - 2\.5rem, 78vh \* \d+\.\d{4}\)$/,
 			);
 		}
-	});
-
-	test("no image on the page offers a candidate wider than the ladder", async ({
-		page,
-	}) => {
-		// Dropping "auto" is what stops eleventy-img building source-width
-		// renditions (11.8 MB of the gallery's 19.4 MB).
-		const widths = await page.evaluate(() =>
-			[...document.querySelectorAll("picture source, picture img")]
-				.flatMap((el) => (el.getAttribute("srcset") ?? "").split(","))
-				.map((candidate) => parseInt(candidate.trim().split(/\s+/)[1], 10))
-				.filter(Number.isFinite),
-		);
-
-		expect(widths.length).toBeGreaterThan(0);
-		expect(Math.max(...widths)).toBeLessThanOrEqual(MAX_CANDIDATE_WIDTH);
 	});
 
 	// NB: there is deliberately no "the API key never reaches the HTML" test
