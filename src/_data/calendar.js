@@ -34,6 +34,14 @@ const CALENDAR_ID = "author.annie.elliot@gmail.com";
  * Only the FETCH is swapped — the fixture goes through the same normaliser the
  * live path runs, so the cancelled-event filter and the inclusive-end correction
  * are still exercised, and there is no `Response` to fake.
+ *
+ * The GOOGLE_KEY guard must stay BELOW the branch: the fixture build and the
+ * Playwright suite run with no key at all. tests/unit/calendar.test.js asserts
+ * that, because hoisting it breaks nothing on a machine that has a key.
+ *
+ * Unlike gallery.js this module reads FIXTURE_DATA once and has nothing to pair
+ * it with — there is no media src on this side — so the read stays here rather
+ * than being threaded in from the default export.
  */
 async function load() {
 	if (process.env.FIXTURE_DATA) {

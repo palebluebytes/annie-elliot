@@ -233,3 +233,20 @@ test("FIXTURE_DATA reads the checked-in payload through the same normaliser", as
 		assert.ok(photo.ratio > 0);
 	}
 });
+
+test("the GOOGLE_KEY guard fires on the live path only — the fixture build has no key", async () => {
+	// The guard sits BELOW the fixture branch, and that ordering is load-bearing
+	// rather than incidental: `npm run build:fixture` and the whole Playwright
+	// suite run with no GOOGLE_KEY at all (README's testing table says so). Hoist
+	// the guard above the branch and nothing errors here — it breaks only on a
+	// machine that has no key, which is every machine except a developer's.
+	delete process.env.GOOGLE_KEY;
+	process.env.FIXTURE_DATA = "1";
+	globalThis.fetch = async () => {
+		throw new Error("the fixture path must not touch the network");
+	};
+
+	const { photos } = await gallery();
+
+	assert.ok(photos.length > 0, "the fixture payload loaded without a key");
+});

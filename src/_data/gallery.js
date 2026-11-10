@@ -25,7 +25,7 @@ dotenv.config();
 const FOLDER_ID = "1yPcvB5KwY7XdKJN2jTyEmGfErgGagmFD";
 
 /**
- * Every photo in the folder, normalised. Under FIXTURE_DATA it comes from a
+ * Every photo in the folder, normalised. Under fixtures it comes from a
  * checked-in payload instead of the live Drive folder, so the visual baselines
  * stop drifting every time Annie adds a photo (see
  * tests/fixtures/drive-files.json).
@@ -33,9 +33,19 @@ const FOLDER_ID = "1yPcvB5KwY7XdKJN2jTyEmGfErgGagmFD";
  * Only the FETCH is swapped — the fixture goes through the same normaliser the
  * live path runs, so ratios, the rotation swap and the caption fallback are all
  * still exercised, and there is no `Response` to fake.
+ *
+ * `fixtures` is a parameter rather than a second read of the environment: which
+ * side of the seam this build is on is decided ONCE, below, and the payload and
+ * the media src are then two halves of that one decision. Read separately they
+ * could in principle disagree, and a disagreement is the silent kind — fixture
+ * metadata paired with live Drive URLs renders a green build of the wrong
+ * photos.
+ *
+ * The GOOGLE_KEY guard must stay BELOW the branch: the fixture build and the
+ * Playwright suite run with no key at all. Both unit suites assert that.
  */
-async function load() {
-	if (process.env.FIXTURE_DATA) {
+async function load(fixtures) {
+	if (fixtures) {
 		return normalisePhotos(
 			JSON.parse(
 				await readFile(
@@ -91,6 +101,22 @@ async function load() {
  * resolve to a path rather than a Drive media URL — the transcode pipeline treats
  * both the same. One of the two is chosen ONCE below and injected into
  * `buildGallery`, which therefore reads no environment per photo.
+ *
+ * This path is CWD-RELATIVE while the fixture JSON eleven lines up is resolved
+ * module-relative via `new URL(..., import.meta.url)`. Two conventions for one
+ * fixture directory, and the asymmetry is forced rather than sloppy:
+ *
+ *   - the JSON is read by `node:fs` here and now, so it must not care where the
+ *     process was started from — `import.meta.url` is the robust base;
+ *   - this string is not read here at all. It is handed to eleventy-img as an
+ *     image `src`, and eleventy-img resolves a local src from the process CWD
+ *     (AGENTS.md, "Image `src` is relative to the working directory"). An
+ *     absolute path or a `file://` URL would also change the hash eleventy-img
+ *     folds into every output filename, which is machine-dependent and would
+ *     make `dist-test/` differ between checkouts.
+ *
+ * Both builds run from the repo root, so the two agree in practice. Unifying
+ * them would mean breaking one of the two rules above.
  */
 function fixtureSrc(photo) {
 	return `./tests/fixtures/gallery-images/${photo.name}`;
@@ -143,10 +169,15 @@ function driveSrc(photo) {
 }
 
 export default async function () {
-	// Chosen once for the whole build, not re-decided per photo.
-	const mediaSrc = process.env.FIXTURE_DATA ? fixtureSrc : driveSrc;
+	// The one read of the environment in this module, and so the one place the
+	// live/fixture seam is decided: the payload and the media src are both
+	// derived from it, not re-decided per photo and not re-decided per half.
+	const fixtures = Boolean(process.env.FIXTURE_DATA);
+	const mediaSrc = fixtures ? fixtureSrc : driveSrc;
 
-	const { photos, rows, skipped } = buildGallery(await load(), { mediaSrc });
+	const { photos, rows, skipped } = buildGallery(await load(fixtures), {
+		mediaSrc,
+	});
 
 	// The skip is `buildGallery`'s policy; saying so out loud is this module's
 	// job, because a pure module cannot have a console in it.
