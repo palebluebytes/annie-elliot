@@ -4,17 +4,6 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-		<link
-			webc:if="lcpBookCoverPreload"
-			rel="preload"
-			as="image"
-			type="image/webp"
-			fetchpriority="high"
-			:href="lcpBookCoverPreload.href"
-			:imagesrcset="lcpBookCoverPreload.imagesrcset"
-			:imagesizes="lcpBookCoverPreload.imagesizes"
-		/>
-
 		<!-- Preload only fonts needed for first paint (nav + hero); rest load via @font-face -->
 		<link
 			rel="preload"

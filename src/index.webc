@@ -9,27 +9,74 @@ metadata:
 <section id="about" class="u-container">
 	<h1>Mr & Mrs Charles Dickens: <span>Her Story...</span></h1>
 	<h2>So the world may know he loved me once</h2>
+	<!--
+		Inert, like the retailer buttons below: the line stays on the page, but
+		nothing here links out while the listing is dormant. Canonical targets, for
+		whoever turns these back into links — the originals carried long tracking
+		query strings, which are in git history if they are wanted:
+		Amazon      https://www.amazon.co.uk/dp/1915023742/
+		Waterstones https://www.waterstones.com/book/mr-and-mrs-charles-dickens/annie-elliot/9781915023742
+	-->
 	<div class="amazon-tagline">
-		<a
-			href="https://www.amazon.co.uk/Mr-Mrs-Charles-Dickens-Story/dp/1915023742/ref=sr_1_1?crid=270O064P2TK7C&amp;dib=eyJ2IjoiMSJ9.kAiRe4xWtUNTTwN6v8GjhbffdpBDO1i9m8UpVQ3Z9Z01mK0cJUU7nGofZTiCFXB-jSZld8S4IfYYgiqFxuFEEktK02ARb_XFVqbq7hUJQoTeN4h1obcSi3SehwWwd8vTmK_1WX_dkspf_9PBTedkn4EiN5BjNgcyWEI_LYWZpaDC1x_pxicUQcuXS5syMVxW.qabpfl6DN4IDnXciDd6PxqrdJAun147XxpHIpZqC2-0&amp;dib_tag=se&amp;keywords=Mr+and+Mrs+Charles+Dickens%3A+Her+Story&amp;qid=1765401088&amp;sprefix=mr+and+mrs+charles+dickens+her+story%2Caps%2C291&amp;sr=8-1"
-			target="_blank"
-			rel="noopener noreferrer"
-		>
+		<span class="amazon-tagline__inert">
 			<span class="stars">★★★★★</span> 5 stars on amazon
-		</a>
+		</span>
 	</div>
 	<div>
 		<div class="u-grid main-grid">
 			<div class="cover">
-				<img
-					webc:is="eleventy-image"
-					src="src/static/images/book-cover.jpg"
-					alt="Book cover of Mr & Mrs Charles Dickens: Her Story by Annie Elliot - A novel about Mrs Dickens"
-					width="400, 640, 800, 1000"
-					sizes="(min-width: 60rem) min(34rem, 42vw), calc(100vw - 3rem)"
-					loading="eager"
-					fetchpriority="high"
-				/>
+				<!--
+					Inline rather than an <img src="…svg">: an SVG referenced by <img> is
+					an isolated document that may not load the page's @font-face faces, so
+					the title would silently fall back to a system font. Inlined, it draws
+					in Playfair/Crimson/Barlow like the rest of the page, and costs no
+					request and no sharp transcode.
+				-->
+				<svg
+					class="cover__placeholder"
+					viewBox="0 0 1000 1500"
+					role="img"
+					aria-labelledby="cover-placeholder-title"
+				>
+					<title id="cover-placeholder-title">
+						Mr &amp; Mrs Charles Dickens: Her Story, a novel by Annie Elliot —
+						cover coming soon
+					</title>
+
+					<rect width="1000" height="1500" class="cover__ground" />
+					<rect
+						x="34"
+						y="34"
+						width="932"
+						height="1432"
+						class="cover__rule cover__frame"
+					/>
+					<rect
+						x="52"
+						y="52"
+						width="896"
+						height="1396"
+						class="cover__rule cover__frame cover__frame--inner"
+					/>
+
+					<text class="cover__title" x="500" y="440">MR &amp; MRS</text>
+					<text class="cover__title" x="500" y="538">CHARLES DICKENS</text>
+					<text class="cover__tagline" x="500" y="638">Her story&#8230;</text>
+
+					<line x1="400" y1="730" x2="600" y2="730" class="cover__rule" />
+
+					<text class="cover__byline" x="500" y="828">A NOVEL BY</text>
+					<text class="cover__author" x="500" y="908">ANNIE ELLIOT</text>
+
+					<!--
+						Anchored near the bottom frame rather than floated under the
+						byline: the slack then reads as deliberate space between two
+						blocks, not as a hole in the middle of one.
+					-->
+					<line x1="300" y1="1240" x2="700" y2="1240" class="cover__rule" />
+					<text class="cover__status" x="500" y="1332">COMING SOON</text>
+					<line x1="300" y1="1380" x2="700" y2="1380" class="cover__rule" />
+				</svg>
 			</div>
 
 			<div class="about-grid__prose">
@@ -57,34 +104,24 @@ metadata:
 					dignity, agency and voice she was denied in life.
 				</p>
 
+				<p class="button-note">Available to order soon</p>
 				<div class="button-container">
-					<div class="button-row">
-						<a
-							href="https://www.waterstones.com/book/mr-and-mrs-charles-dickens/annie-elliot/9781915023742"
-							class="btn btn-waterstones"
-							aria-label="Preorder from Waterstones"
-						>
-							<img src="/images/waterstones-logo.svg" alt="Waterstones" />
-						</a>
-						<a
-							href="https://www.amazon.co.uk/Mr-Mrs-Charles-Dickens-Story/dp/1915023742/ref=sr_1_1?crid=270O064P2TK7C&amp;dib=eyJ2IjoiMSJ9.kAiRe4xWtUNTTwN6v8GjhbffdpBDO1i9m8UpVQ3Z9Z01mK0cJUU7nGofZTiCFXB-jSZld8S4IfYYgiqFxuFEEktK02ARb_XFVqbq7hUJQoTeN4h1obcSi3SehwWwd8vTmK_1WX_dkspf_9PBTedkn4EiN5BjNgcyWEI_LYWZpaDC1x_pxicUQcuXS5syMVxW.qabpfl6DN4IDnXciDd6PxqrdJAun147XxpHIpZqC2-0&amp;dib_tag=se&amp;keywords=Mr+and+Mrs+Charles+Dickens%3A+Her+Story&amp;qid=1765401088&amp;sprefix=mr+and+mrs+charles+dickens+her+story%2Caps%2C291&amp;sr=8-1"
-							class="btn btn-amazon"
-							aria-label="Preorder from Amazon"
-						>
-							<img src="/images/amazon-logo.svg" alt="Amazon" />
-						</a>
-					</div>
-					<div class="button-row center">
-						<a
-							href="https://envelopebooks.co.uk/shop/mr-and-mrs-charles-dickens/"
-							class="btn btn-envelope"
-							aria-label="Buy from Envelope Books"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<img src="/images/envelope-books-logo.svg" alt="Envelope Books" />
-						</a>
-					</div>
+					<button
+						type="button"
+						class="btn btn-waterstones"
+						aria-label="Buy from Waterstones — coming soon"
+						disabled
+					>
+						<img src="/images/waterstones-logo.svg" alt="Waterstones" />
+					</button>
+					<button
+						type="button"
+						class="btn btn-amazon"
+						aria-label="Buy from Amazon — coming soon"
+						disabled
+					>
+						<img src="/images/amazon-logo.svg" alt="Amazon" />
+					</button>
 				</div>
 			</div>
 		</div>
@@ -126,18 +163,19 @@ metadata:
 			letter-spacing: 0.05em;
 			text-transform: uppercase;
 
-			a {
-				text-decoration: none;
+			.amazon-tagline__inert {
 				color: var(--taupe);
-				transition: opacity 0.2s;
 			}
 
-			a:hover {
-				opacity: 0.8;
-			}
-
+			/*
+				Greyed rather than Amazon orange: the line is inert, and the colour is
+				what carries that now there is no link to lose. The `.btn:disabled`
+				treatment (0.45 opacity) is not reused here — it would put this text at
+				about 2.3:1 on cream, and unlike a disabled control, plain text gets no
+				WCAG contrast exemption.
+			*/
 			.stars {
-				color: #ff9900;
+				color: var(--battleship-gray);
 				margin-right: 0.5ch;
 			}
 		}
@@ -176,10 +214,72 @@ metadata:
 				margin-top: 0;
 			}
 
-			picture {
-				img {
-					width: 100%;
-					height: auto;
+			.cover__placeholder {
+				width: 100%;
+				height: auto;
+				display: block;
+				box-shadow: 0 2px 12px var(--shadow-medium);
+
+				.cover__ground {
+					fill: var(--cream);
+				}
+
+				/* Strokes, not fills: `line` and the frame `rect`s are both outlines. */
+				.cover__rule {
+					fill: none;
+					stroke: var(--light-beige);
+					stroke-width: 3;
+				}
+
+				.cover__frame {
+					stroke: var(--taupe);
+				}
+
+				.cover__frame--inner {
+					stroke-width: 1;
+					stroke: var(--light-beige);
+				}
+
+				text {
+					fill: var(--taupe);
+					text-anchor: middle;
+				}
+
+				.cover__title {
+					font-family: var(--font-base);
+					font-size: 78px;
+					letter-spacing: 2px;
+				}
+
+				.cover__tagline {
+					font-family: var(--font-italic);
+					font-style: italic;
+					font-size: 56px;
+					fill: var(--battleship-gray);
+				}
+
+				.cover__byline,
+				.cover__status {
+					font-family: var(--font-condensed);
+					text-transform: uppercase;
+				}
+
+				.cover__byline {
+					font-size: 36px;
+					letter-spacing: 10px;
+					fill: var(--battleship-gray);
+				}
+
+				.cover__author {
+					font-family: var(--font-base);
+					font-size: 64px;
+					letter-spacing: 4px;
+				}
+
+				.cover__status {
+					font-size: 54px;
+					font-weight: 700;
+					letter-spacing: 14px;
 				}
 			}
 
@@ -203,17 +303,24 @@ metadata:
 				}
 			}
 
+			.button-note {
+				text-align: center;
+				margin-top: var(--space-m);
+				margin-bottom: 0;
+				font-family: var(--font-condensed);
+				font-size: var(--step-0);
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				color: var(--taupe);
+			}
+
 			.button-container {
 				display: grid;
 				grid-template-columns: 1fr 1fr;
 				gap: var(--space-xs);
-				margin-top: var(--space-m);
+				margin-top: var(--space-xs);
 				max-width: 30rem;
 				margin-inline: auto;
-
-				.button-row {
-					display: contents; /* Let buttons participate in the grid */
-				}
 			}
 
 			.btn {
@@ -233,9 +340,16 @@ metadata:
 				background-color: #ffffff; /* Ensure base background is white */
 			}
 
-			.btn:hover {
+			.btn:hover:not(:disabled) {
 				transform: scale(1.05);
 				opacity: 0.9;
+			}
+
+			/* Disabled until the new edition has a retailer to point at. */
+			.btn:disabled {
+				cursor: not-allowed;
+				opacity: 0.45;
+				filter: grayscale(1);
 			}
 
 			.btn img {
@@ -257,15 +371,6 @@ metadata:
 			.btn-amazon {
 				background-color: #ffffff;
 				border: 1px solid #ff9900;
-			}
-
-			.btn-envelope {
-				background-color: #ffffff;
-				border: 1px solid #000000;
-				grid-column: 1 / span 2;
-				justify-self: center;
-				/* Match the width of one button in the row above */
-				width: calc(50% - (var(--space-xs) / 2));
 			}
 		}
 	}
