@@ -29,10 +29,11 @@ every submission an extra redirect hop.
 
 ### What it rejects
 
-| Response                     | When                                                                            |
-| ---------------------------- | ------------------------------------------------------------------------------- |
-| **403** `Unauthorized`       | `Origin` is missing, unparseable, or is not exactly `https://annieelliot.co.uk` |
-| **405** `Method Not Allowed` | the origin is good but the method is neither `POST` nor `OPTIONS`               |
+| Response                     | When                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| **403** `Unauthorized`       | `Origin` is missing, unparseable, or is not exactly `https://annieelliot.co.uk`  |
+| **405** `Method Not Allowed` | the origin is good but the method is neither `POST` nor `OPTIONS`                |
+| **429** `Too many messages…` | the rate limit below has been reached; carries a `Retry-After` header in seconds |
 
 The origin check is the first thing the worker does, so a disallowed origin
 cannot even collect a CORS preflight answer.
@@ -59,6 +60,52 @@ Be clear-eyed about what this buys: the CORS headers protect nothing here,
 because a browser does not apply CORS to a form **navigation**. The `Origin`
 header is the whole guard, and it is a guard against other people's pages
 posting here — not against a direct `curl` that sets the header itself.
+
+## Rate limiting
+
+A **per-IP limit of 5 requests per 60 seconds**, keyed on `CF-Connecting-IP`. A
+request over the limit gets **429** with `Retry-After`, and no mail is sent.
+
+It is enforced in two places, and both must pass:
+
+1. **`env.RATE_LIMITER`** — Cloudflare's built-in [Rate Limiting
+   binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
+   Counted across isolates within a colo. Used only when the binding is
+   declared; see below.
+2. **An in-isolate sliding window** in `src/index.js`, which always applies and
+   needs no binding at all. Each isolate keeps its own budget, so it is the
+   weaker half — but it means a deploy with no configuration still has a limit.
+
+A limiter that errors is logged and treated as a pass; the in-isolate window
+holds the floor, and a Rate Limiting outage should not take the contact form
+down with it.
+
+**What it actually enforces: very little.** A per-IP limit at the edge is a
+speed bump, not authentication. It does not stop a determined sender — IPs are
+cheap, the built-in limiter is per-colo rather than global and is explicitly
+best-effort, and the in-isolate half resets whenever an isolate does. It stops
+an accidental double-submit and a naive script hammering one address. It is not
+a captcha and there is no captcha here.
+
+### Turning on the Rate Limiting binding (user action)
+
+The binding needs no external store and nothing created in the dashboard, but it
+does have to be declared in `wrangler.jsonc`, which the worker code cannot do
+for itself. Add:
+
+```jsonc
+"ratelimits": [
+  {
+    "name": "RATE_LIMITER",
+    "namespace_id": "1001",
+    "simple": { "limit": 5, "period": 60 }
+  }
+]
+```
+
+`namespace_id` is any number you choose, local to this account; `period` must be
+`10` or `60`. Then redeploy. Until that is added the in-isolate window is the
+only limit in force.
 
 ## Why it works this way
 
@@ -98,7 +145,11 @@ npx wrangler deploy
 
 There are no secrets. The `send_email` binding named `EMAIL` is declared in
 `wrangler.jsonc`, and both the sender and recipient addresses must be verified in
-**Cloudflare → Email Routing**.
+**Cloudflare → Email Routing**. The optional `RATE_LIMITER` binding is described
+above.
+
+**Nothing takes effect until this worker is deployed.** It deploys separately
+from the site, and merging a change to the repository does not deploy it.
 
 ## If it stops
 
@@ -117,5 +168,5 @@ coverage.
 
 Worth covering if you add them: the origin check (especially
 `https://annieelliot.co.uk.example.com`, which a prefix test lets through), the
-method check, and that a failed send still redirects to `/email-failure/` rather
-than surfacing an error.
+method check, the rate limit's 429, and that a failed send still redirects to
+`/email-failure/` rather than surfacing an error.

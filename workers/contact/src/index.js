@@ -12,6 +12,9 @@ const siteOrigin = "https://annieelliot.co.uk";
 const successUrl = new URL("/email-success/", siteOrigin).href;
 const failureUrl = new URL("/email-failure/", siteOrigin).href;
 
+// A per-IP speed bump, not authentication — see README.
+const rateLimit = { requests: 5, windowSeconds: 60 };
+
 export default {
 	async fetch(request, env) {
 		// The origin check comes first, so a disallowed origin cannot even
@@ -30,6 +33,20 @@ export default {
 				status: 405,
 				headers: corsHeaders(),
 			});
+		}
+
+		const limit = await checkRateLimit(request, env);
+		if (!limit.allowed) {
+			return new Response(
+				"Too many messages from this address. Please wait a minute and try again.",
+				{
+					status: 429,
+					headers: {
+						...corsHeaders(),
+						"Retry-After": String(limit.retryAfterSeconds),
+					},
+				},
+			);
 		}
 
 		try {
@@ -79,6 +96,82 @@ function corsHeaders() {
 		"Access-Control-Allow-Methods": "POST",
 		"Access-Control-Allow-Headers": "Content-Type",
 	};
+}
+
+/**
+ * Per-IP rate limit, newest signal first:
+ *
+ * 1. `env.RATE_LIMITER`, Cloudflare's built-in Rate Limiting binding, when it
+ *    is declared in `wrangler.jsonc`. Counted per colo, across isolates.
+ * 2. An in-isolate window, which always applies. It needs no binding at all,
+ *    but each isolate keeps its own budget, so it is the weaker of the two.
+ *
+ * Both must pass. A limiter that errors is logged and treated as a pass — the
+ * in-isolate window still holds the floor, and a limiter outage should not take
+ * the contact form down with it.
+ */
+async function checkRateLimit(request, env) {
+	const key = request.headers.get("CF-Connecting-IP") || "unknown";
+
+	const local = localRateLimit(key);
+	if (!local.allowed) return local;
+
+	if (env.RATE_LIMITER) {
+		try {
+			const { success } = await env.RATE_LIMITER.limit({ key });
+			if (!success) {
+				return { allowed: false, retryAfterSeconds: rateLimit.windowSeconds };
+			}
+		} catch (e) {
+			console.error("Rate limiter unavailable:", e);
+		}
+	}
+
+	return { allowed: true, retryAfterSeconds: 0 };
+}
+
+// Request timestamps per client, oldest key first. Lives for the life of the
+// isolate; capped so a flood of distinct addresses cannot grow it without end.
+const recentRequests = new Map();
+const maxTrackedClients = 1000;
+
+function localRateLimit(key) {
+	const now = Date.now();
+	const windowMs = rateLimit.windowSeconds * 1000;
+	const cutoff = now - windowMs;
+
+	pruneTrackedClients(cutoff);
+
+	const seen = (recentRequests.get(key) || []).filter((time) => time > cutoff);
+
+	if (seen.length >= rateLimit.requests) {
+		const retryAfterMs = seen[0] + windowMs - now;
+		return {
+			allowed: false,
+			retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
+		};
+	}
+
+	seen.push(now);
+	// Delete before setting so the Map's insertion order stays least-recently
+	// seen first, which is what makes the eviction below sensible.
+	recentRequests.delete(key);
+	recentRequests.set(key, seen);
+
+	return { allowed: true, retryAfterSeconds: 0 };
+}
+
+function pruneTrackedClients(cutoff) {
+	for (const [key, times] of recentRequests) {
+		if (times[times.length - 1] <= cutoff) recentRequests.delete(key);
+	}
+
+	// Still over the cap: drop the least recently seen until it fits.
+	while (recentRequests.size >= maxTrackedClients) {
+		const oldest = recentRequests.keys().next();
+		if (oldest.done) break;
+		recentRequests.delete(oldest.value);
+	}
 }
 
 async function sendEmail(data, env) {
