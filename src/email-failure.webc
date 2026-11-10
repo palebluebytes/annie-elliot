@@ -5,7 +5,7 @@ metadata:
 ---
 
 <section id="email-failure" class="postcard u-container">
-	<h1>Message Could Not Be Sent</h1>
+	<h1 class="u-page-title">Message Could Not Be Sent</h1>
 	<div class="postcard-wrapper">
 		<div class="postcard-border">
 			<p class="error-message">
@@ -23,14 +23,6 @@ metadata:
 		font-family: var(--font-base);
 		padding-block: var(--space-l);
 		text-align: center;
-
-		h1 {
-			text-align: center;
-			color: var(--taupe);
-			margin: 0;
-			font-family: var(--font-base);
-			margin-bottom: var(--space-l);
-		}
 
 		.postcard-wrapper {
 			display: flex;

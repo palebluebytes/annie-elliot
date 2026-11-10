@@ -61,6 +61,9 @@
 		<!-- Critical CSS: Base stylesheets bundled and inlined to prevent FOUC -->
 		<link rel="stylesheet" href="reset.css" webc:bucket="base" />
 		<link rel="stylesheet" href="design-system.css" webc:bucket="base" />
+		<!-- The furniture above the tokens. Order matters: it reads design-system's
+		     custom properties, and every page <style> block overrides it. -->
+		<link rel="stylesheet" href="page-furniture.css" webc:bucket="base" />
 
 		<!-- Bundled CSS from components -->
 		<style webc:keep @raw="getBundle('css', 'base')"></style>

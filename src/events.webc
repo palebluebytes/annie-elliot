@@ -8,7 +8,7 @@ metadata:
 <section id="events" class="events-section u-container">
 	<section id="audience-say" class="audience-section">
 		<div class="audience-header">
-			<h1>What Audiences Say</h1>
+			<h1 class="u-page-title">What Audiences Say</h1>
 			<h2>About Mrs Dickens Telling Her Story</h2>
 		</div>
 
@@ -46,7 +46,7 @@ metadata:
 		</div>
 	</section>
 
-	<h2 class="section-heading">Upcoming Events</h2>
+	<h2 class="u-section-title section-heading">Upcoming Events</h2>
 
 	<div webc:if="$data.calendar.futureEvents.length > 0">
 		<div class="event-wrapper" webc:for="event of $data.calendar.futureEvents">
@@ -79,7 +79,7 @@ metadata:
 	</div>
 
 	<div webc:if="$data.calendar.pastEvents.length > 0">
-		<h2 class="section-heading">Past Events</h2>
+		<h2 class="u-section-title section-heading">Past Events</h2>
 
 		<div
 			class="event-wrapper is-past"
@@ -143,9 +143,10 @@ metadata:
 				   is still the largest type here — the next heading down,
 				   .section-heading, is --step-3. */
 				h1 {
-					font-family: var(--font-base);
-					color: var(--taupe);
-					margin: 0;
+					/* No bottom margin, unlike the shared .u-page-title: its own
+					   subtitle follows, and .audience-header carries the gap down
+					   to the testimonials. */
+					margin-bottom: 0;
 					font-weight: 700;
 					line-height: 1.1;
 					text-transform: none;
@@ -266,25 +267,6 @@ metadata:
 					margin-inline-start: 0.1em;
 				}
 			}
-		}
-
-		h1 {
-			text-align: center;
-			color: var(--taupe);
-			margin: 0;
-			font-family: var(--font-base);
-			margin-bottom: var(--space-l);
-		}
-
-		h2 {
-			text-align: center;
-			color: var(--taupe);
-			margin-top: var(--space-l);
-			margin-bottom: var(--space-m);
-			font-family: var(--font-italic);
-			font-style: italic;
-			font-size: var(--step-4);
-			font-weight: normal;
 		}
 
 		.event-wrapper {

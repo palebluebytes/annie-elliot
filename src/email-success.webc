@@ -5,7 +5,7 @@ metadata:
 ---
 
 <section id="email-success" class="postcard u-container">
-	<h1>Message Sent Successfully</h1>
+	<h1 class="u-page-title">Message Sent Successfully</h1>
 	<div class="postcard-wrapper">
 		<div class="postcard-border">
 			<p class="success-message">
@@ -22,14 +22,6 @@ metadata:
 		font-family: var(--font-base);
 		padding-block: var(--space-l);
 		text-align: center;
-
-		h1 {
-			text-align: center;
-			color: var(--taupe);
-			margin: 0;
-			font-family: var(--font-base);
-			margin-bottom: var(--space-l);
-		}
 
 		.postcard-wrapper {
 			display: flex;

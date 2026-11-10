@@ -6,7 +6,7 @@ metadata:
 ---
 
 <section id="author" class="u-container">
-	<h1>About the Author</h1>
+	<h1 class="u-page-title">About the Author</h1>
 	<div>
 		<div class="u-grid main-grid">
 			<!--
@@ -59,10 +59,9 @@ metadata:
 		padding-block: var(--space-l);
 
 		h1 {
-			text-align: center;
-			color: var(--taupe);
-			margin: 0;
-			font-family: var(--font-base);
+			/* One step wider than the shared .u-page-title's --space-l. Kept as
+			   found: the extra air separates the title from the two-column
+			   grid below, and the visual baseline is the only record of it. */
 			margin-bottom: var(--space-xl);
 		}
 
