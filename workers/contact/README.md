@@ -69,9 +69,9 @@ request over the limit gets **429** with `Retry-After`, and no mail is sent.
 It is enforced in two places, and both must pass:
 
 1. **`env.RATE_LIMITER`** — Cloudflare's built-in [Rate Limiting
-   binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
-   Counted across isolates within a colo. Used only when the binding is
-   declared; see below.
+   binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/),
+   declared in `wrangler.jsonc` as `ratelimits`. Counted across isolates within
+   a colo. See below.
 2. **An in-isolate sliding window** in `src/index.js`, which always applies and
    needs no binding at all. Each isolate keeps its own budget, so it is the
    weaker half — but it means a deploy with no configuration still has a limit.
@@ -87,11 +87,11 @@ best-effort, and the in-isolate half resets whenever an isolate does. It stops
 an accidental double-submit and a naive script hammering one address. It is not
 a captcha and there is no captcha here.
 
-### Turning on the Rate Limiting binding (user action)
+### The Rate Limiting binding is declared, not provisioned
 
-The binding needs no external store and nothing created in the dashboard, but it
-does have to be declared in `wrangler.jsonc`, which the worker code cannot do
-for itself. Add:
+It is already in `wrangler.jsonc` and needs **no user action**: the built-in
+limiter has no external store and nothing to create in the dashboard, so the
+declaration is the whole provisioning step and it ships with the worker.
 
 ```jsonc
 "ratelimits": [
@@ -103,9 +103,10 @@ for itself. Add:
 ]
 ```
 
-`namespace_id` is any number you choose, local to this account; `period` must be
-`10` or `60`. Then redeploy. Until that is added the in-isolate window is the
-only limit in force.
+`limit` and `period` have to stay in step with `rateLimit` in `src/index.js`;
+`period` accepts only `10` or `60`. `namespace_id` is an arbitrary identifier
+scoped to this Worker — it names nothing outside the config file, and changing
+it resets the counters.
 
 ### Header injection
 
@@ -152,10 +153,11 @@ npm install
 npx wrangler deploy
 ```
 
-There are no secrets. The `send_email` binding named `EMAIL` is declared in
-`wrangler.jsonc`, and both the sender and recipient addresses must be verified in
-**Cloudflare → Email Routing**. The optional `RATE_LIMITER` binding is described
-above.
+There are no secrets, and there is nothing to create in the dashboard. Both
+bindings — `send_email` as `EMAIL` and `ratelimits` as `RATE_LIMITER` — are
+declared in `wrangler.jsonc` and arrive with the deploy; the only out-of-band
+step is that the sender and recipient addresses must be verified in **Cloudflare
+→ Email Routing**.
 
 **Nothing takes effect until this worker is deployed.** It deploys separately
 from the site, and merging a change to the repository does not deploy it.

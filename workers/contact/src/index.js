@@ -102,8 +102,11 @@ function corsHeaders() {
 /**
  * Per-IP rate limit, newest signal first:
  *
- * 1. `env.RATE_LIMITER`, Cloudflare's built-in Rate Limiting binding, when it
- *    is declared in `wrangler.jsonc`. Counted per colo, across isolates.
+ * 1. `env.RATE_LIMITER`, Cloudflare's built-in Rate Limiting binding, declared
+ *    as `ratelimits` in `wrangler.jsonc`. Counted per colo, across isolates.
+ *    The truthiness check below is for a run with no binding at all — an
+ *    unconfigured `wrangler dev`, or a future caller of this module — not a
+ *    deploy, where the declaration ships with the worker.
  * 2. An in-isolate window, which always applies. It needs no binding at all,
  *    but each isolate keeps its own budget, so it is the weaker of the two.
  *
