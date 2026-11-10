@@ -5,6 +5,11 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "contact",
+	// Reached only through the custom domain in `routes` below. wrangler
+	// defaults an ABSENT `workers_dev` to true, which would publish a second,
+	// unguarded hostname for a mail endpoint whose origin check is written
+	// against the site origin. Stated here so the default cannot do that.
+	"workers_dev": false,
 	// Pinned so wrangler cannot follow a cached account selection or a
 	// differently-scoped token to an account that does not host this
 	// worker — the failure there is "This Worker does not exist on your

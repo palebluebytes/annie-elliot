@@ -5,6 +5,13 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "calendar",
+	// This worker is a cron and has no `fetch` handler, so a workers.dev URL
+	// serves nothing but a 500. It was disabled on the account, but wrangler
+	// defaults an ABSENT `workers_dev` to true and warns that it is
+	// "overwriting current status" — a deploy silently published
+	// calendar.palebluebytes.workers.dev. Stated here so the default cannot
+	// re-enable it.
+	"workers_dev": false,
 	// Pinned so wrangler cannot follow a cached account selection or a
 	// differently-scoped token to an account that does not host this
 	// worker — the failure there is "This Worker does not exist on your
