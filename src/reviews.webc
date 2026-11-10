@@ -17,13 +17,19 @@ metadata:
 	<h2>Photo Gallery</h2>
 
 	<!--
-		Justified rows. `gallery.js` freezes the row BREAKS at a 1160px container
-		(DP packer) and emits each photo's displayed aspect ratio as `--r`; each
-		row is a flex container whose items carry `flex: var(--r) 1 0`, so the
-		row's whole width is distributed in proportion to ratio and every item
-		lands at the identical height at its exact aspect. One packing serves
-		every viewport — the widths stay fluid, only the height changes.
-		Nothing is cropped, so there is no aspect-ratio and no object-fit.
+		Justified rows. `src/_lib/gallery-layout.js` is the one home for this
+		geometry: it freezes the row BREAKS at its PACK_WIDTH container (DP
+		packer) and emits each photo's displayed aspect ratio as `--r` and its
+		finished `sizes` attribute. Each row is a flex container whose items
+		carry `flex: var(--r) 1 0`, so the row's whole width is distributed in
+		proportion to ratio and every item lands at the identical height at its
+		exact aspect. One packing serves every viewport — the widths stay fluid,
+		only the height changes. Nothing is cropped, so there is no aspect-ratio
+		and no object-fit.
+
+		This template composes no geometry arithmetic. It used to rebuild the
+		packer's own row width from `share`, `rowCount` and `rowRatioSum` with
+		1160 and 8 inline, which is how one formula came to have six holders.
 
 		The caption is the photo's text alternative and is rendered ONCE, by the
 		figcaption: the link takes a short positional name and points at it with
@@ -33,11 +39,7 @@ metadata:
 		times per thumbnail.
 	-->
 	<section class="photo-gallery" id="gallery">
-		<div
-			class="row"
-			webc:for="row of $data.gallery.rows"
-			:style="`--sum: ${row[0].rowRatioSum.toFixed(4)}`"
-		>
+		<div class="row" webc:for="row of $data.gallery.rows">
 			<figure
 				class="gallery-item"
 				webc:for="item of row"
@@ -54,7 +56,7 @@ metadata:
 						:src="item.src"
 						alt=""
 						width="400, 640, 800, 1300, 1800"
-						:sizes="`(min-width: 77.5rem) ${Math.round(item.share * (1160 - 8 * (item.rowCount - 1)))}px, (min-width: 40rem) ${Math.round(item.share * 100)}vw, 100vw`"
+						:sizes="item.sizes"
 					/>
 				</a>
 				<figcaption :id="`cap-${item.index}`" @text="item.caption"></figcaption>
@@ -235,10 +237,13 @@ metadata:
 
 		/* ---- gallery (justified rows, tight mosaic — nothing is cropped) ---- */
 		.photo-gallery {
-			/* 8px, and it must stay 8px: ROW_GAP in src/_data/gallery.js packs the
-			   rows against this number, and the `sizes` attribute above subtracts
-			   it per gap. A token from the spacing scale was tried and rejected —
-			   --space-2xs is a 9-10px clamp, so the three would silently disagree. */
+			/* 8px, and it must stay 8px: ROW_GAP in src/_lib/gallery-layout.js
+			   packs the rows against this number and subtracts it per gap when it
+			   writes each `sizes` string. CSS cannot import it, so this is the one
+			   copy that has to exist — tests/unit/gallery-layout.test.js reads it
+			   back out of this file and fails if the two disagree. A token from the
+			   spacing scale was tried and rejected — --space-2xs is a 9-10px clamp,
+			   so the three would silently disagree. */
 			--gap: 0.5rem;
 
 			display: flex;
@@ -248,11 +253,6 @@ metadata:
 			.row {
 				display: flex;
 				gap: var(--gap);
-				/* Safety valve for a degenerate gallery. The packer has no choice with
-				   one or two photos, and a lone photo would become a ~1500px-tall
-				   full-width slab; this caps a row at 1.5x the target row height.
-				   Never fires for the current eleven (measured). */
-				max-width: calc(1.5 * 22rem * var(--sum));
 			}
 
 			.gallery-item {
@@ -261,6 +261,17 @@ metadata:
 				/* basis 0 + grow proportional to ratio => every item on the row lands
 				   at the same height at its exact aspect, with no calc and no rounding */
 				flex: var(--r) 1 0;
+				/* Safety valve for a degenerate gallery. The packer has no choice with
+				   one or two photos, and a lone photo would become a ~1500px-tall
+				   full-width slab; this holds every photo to 1.5x the target row
+				   height (ROW_HEIGHT_CAP_FACTOR x TARGET_ROW_HEIGHT in
+				   src/_lib/gallery-layout.js, which the unit test checks this line
+				   against). Expressed per item against --r rather than per row
+				   against a ratio sum: the items of a row grow in proportion, so they
+				   reach the cap together and the row still comes out flush, and the
+				   row then needs no inline style at all. Never fires for the current
+				   eleven (measured). */
+				max-width: calc(1.5 * 22rem * var(--r));
 				min-width: 0; /* REQUIRED — the default min-width:auto floors a flex item
 				                 at the image's intrinsic width and breaks the row */
 			}
@@ -346,11 +357,12 @@ metadata:
 			@media (max-width: 39.9375rem) {
 				.row {
 					display: block;
-					max-width: none;
 				}
 
 				.gallery-item {
 					width: 100%;
+					/* one full-width column: --r is inert here, so the cap must be too */
+					max-width: none;
 				}
 
 				/* The caption belongs to the photo above it, so it sits tight

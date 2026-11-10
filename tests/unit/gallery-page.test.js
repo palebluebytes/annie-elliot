@@ -187,24 +187,35 @@ test("rows partition the photos in order — nothing lost, nothing duplicated", 
 	}
 });
 
-test("share is the photo's fraction of its row, and every row's shares sum to 1", () => {
+test("each photo carries its finished sizes string, and no geometry to re-derive", () => {
 	const { rows } = buildGallery(livePhotos(), { mediaSrc });
 
 	for (const row of rows) {
-		const sum = row.reduce((s, item) => s + item.ratio, 0);
-		let shareSum = 0;
 		for (const item of row) {
-			assert.equal(item.share, item.ratio / sum);
-			assert.equal(item.rowCount, row.length);
-			assert.equal(item.rowRatioSum, sum, "the row's width cap input");
-			shareSum += item.share;
+			assert.match(
+				item.sizes,
+				/^\(min-width: 77\.5rem\) \d+px, \(min-width: 40rem\) \d+vw, 100vw$/,
+			);
+			// `share`, `rowCount` and `rowRatioSum` used to cross this seam so that
+			// reviews.webc could rebuild the packer's own row width from them. The
+			// packer emits the width itself now, so none of the three is needed.
+			assert.equal(item.share, undefined);
+			assert.equal(item.rowCount, undefined);
+			assert.equal(item.rowRatioSum, undefined);
 		}
-		assert.ok(Math.abs(shareSum - 1) < 1e-12, "the row's shares sum to 1");
 	}
 
-	// The first row is 0.75 + 0.75 + 1.3333 — spot-check against ticket 03's table.
-	assert.equal(rows[0][0].share.toFixed(4), "0.2647");
-	assert.equal(rows[3][2].share.toFixed(4), "0.5373");
+	// Spot-checks against ticket 03's measured table: the first photo takes
+	// 0.2647 of a 0.75 + 0.75 + 1.3333 row, and symposium1 0.5373 of the last.
+	assert.equal(
+		rows[0][0].sizes,
+		// round(0.2647 * 1144) = 303, round(0.2647 * 100) = 26
+		"(min-width: 77.5rem) 303px, (min-width: 40rem) 26vw, 100vw",
+	);
+	assert.equal(
+		rows[3][2].sizes,
+		"(min-width: 77.5rem) 615px, (min-width: 40rem) 54vw, 100vw",
+	);
 });
 
 test("a list whose every file is skipped yields no rows rather than throwing", () => {
