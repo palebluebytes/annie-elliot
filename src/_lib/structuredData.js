@@ -10,30 +10,29 @@
  * The page's JSON-LD schema nodes, as DATA — an array of plain objects. It is
  * the caller that serialises, exactly once, with `jsonForScriptElement` below.
  *
- * Called per page from `src/src.11tydata.js`, so `page`, `metadata` and
- * `calendar` are the values from that page's data cascade — `metadata` is the
- * page's own front matter, `calendar` is the global `_data/calendar.js` export
+ * Called per page from `src/src.11tydata.js`, so `metadata` and `calendar` are
+ * the values from that page's data cascade — `metadata` is the page's own front
+ * matter, `calendar` is the global `_data/calendar.js` export
  * (`{ futureEvents, pastEvents }`). The site's identity arrives as `site`
  * (`_data/site.js`), which is the only module that holds it.
+ *
+ * It takes no `page`: which schemas a page gets is decided by the `pageType` it
+ * declares, and nothing here needs its URL. The URL used to be a second,
+ * disagreeing source for the same decision.
  */
-export function structuredDataFor(page, metadata, calendar, site) {
-	// Prioritize metadata.pageType, fallback to checking page URL
-	let pageType = metadata?.pageType;
-	if (!pageType) {
-		const pageUrlValue = page?.url || "";
-		// Check for events page
-		if (pageUrlValue.includes("/events")) {
-			pageType = "events";
-		} else if (
-			pageUrlValue === "/" ||
-			pageUrlValue === "" ||
-			pageUrlValue.endsWith("/index.html")
-		) {
-			pageType = "book";
-		} else {
-			pageType = "website";
-		}
-	}
+export function structuredDataFor(metadata, calendar, site) {
+	/**
+	 * The page's own declaration, or `"website"`. Four pages declare a `pageType`
+	 * in front matter; `/reviews/`, `/email-success/` and `/email-failure/`
+	 * declare none, and nothing defaults it in the cascade — `_data/metadata.js`
+	 * used to carry `pageType: "website"` and was deleted with the site-identity
+	 * split, so this is now the one place the default lives.
+	 *
+	 * Only `"book"` and `"events"` change the result. `"author"`, `"contact"` and
+	 * `"website"` are indistinguishable to this module and to every other reader
+	 * of the value.
+	 */
+	const pageType = metadata?.pageType ?? "website";
 
 	const structuredData = [];
 
@@ -49,14 +48,11 @@ export function structuredDataFor(page, metadata, calendar, site) {
 	};
 	structuredData.push(authorSchema);
 
-	// Book schema - for home page
-	const isHomePage =
-		pageType === "book" ||
-		page?.url === "/" ||
-		page?.url === "/index.html" ||
-		!page?.url ||
-		(page?.url && page.url.endsWith("/index.html"));
-	if (isHomePage) {
+	// Book schema - the home page only, which is the page that declares
+	// `pageType: "book"`. This used to re-derive the same fact from `page.url`
+	// in five more clauses, one of which — `!page?.url` — gave a page with no
+	// URL at all a `Book` schema.
+	if (pageType === "book") {
 		const bookSchema = {
 			"@context": "https://schema.org",
 			"@type": "Book",

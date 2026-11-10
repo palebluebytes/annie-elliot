@@ -39,7 +39,7 @@ export default {
 		 */
 		structuredDataJson: (data) =>
 			jsonForScriptElement(
-				structuredDataFor(data.page, data.metadata, data.calendar, data.site),
+				structuredDataFor(data.metadata, data.calendar, data.site),
 			),
 	},
 };

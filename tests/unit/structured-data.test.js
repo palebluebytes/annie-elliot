@@ -28,7 +28,6 @@ const typesOf = (nodes) => nodes.map((node) => node["@type"]);
 
 test("the home page gets Person, Book and WebSite, and no Event", () => {
 	const nodes = structuredDataFor(
-		{ url: "/" },
 		{ pageType: "book" },
 		{ futureEvents: [{ summary: "Reading", startDateTime: "2099-01-01" }] },
 		site,
@@ -40,7 +39,6 @@ test("the home page gets Person, Book and WebSite, and no Event", () => {
 
 test("the events page gets one Event per upcoming event, and no Book", () => {
 	const nodes = structuredDataFor(
-		{ url: "/events/" },
 		{ pageType: "events" },
 		{
 			futureEvents: [
@@ -82,7 +80,6 @@ test("the events page gets one Event per upcoming event, and no Book", () => {
 
 test("an event with no startDateTime is skipped, not emitted malformed", () => {
 	const nodes = structuredDataFor(
-		{ url: "/events/" },
 		{ pageType: "events" },
 		{
 			futureEvents: [
@@ -105,23 +102,38 @@ test("every other page gets Person and WebSite, and neither Book nor Event", () 
 		futureEvents: [{ summary: "Reading", startDateTime: "2099-01-01" }],
 	};
 
-	for (const [url, metadata] of [
+	for (const [page, metadata] of [
 		["/author/", { pageType: "author" }],
 		["/contact/", { pageType: "contact" }],
-		["/reviews/", {}],
-		["/email-success/", {}],
-		["/email-failure/", {}],
+		["/reviews/", { pageType: "website" }],
+		["/email-success/", { pageType: "website" }],
+		["/email-failure/", { pageType: "website" }],
 	]) {
 		assert.deepEqual(
-			typesOf(structuredDataFor({ url }, metadata, calendar, site)),
+			typesOf(structuredDataFor(metadata, calendar, site)),
 			["Person", "WebSite"],
-			`${url} should carry Person and WebSite only`,
+			`${page} should carry Person and WebSite only`,
 		);
 	}
 });
 
+test("a page that declares no pageType falls back to website", () => {
+	// Four pages declare a `pageType` in their front matter; `/reviews/`,
+	// `/email-success/`, `/email-failure/` and `sitemap.njk` declare none, and
+	// nothing in the cascade defaults it since `_data/metadata.js` was deleted.
+	assert.deepEqual(
+		typesOf(structuredDataFor(undefined, {}, site)),
+		["Person", "WebSite"],
+		"no metadata at all is still a website, not a book",
+	);
+	assert.deepEqual(typesOf(structuredDataFor({ title: "Reviews" }, {}, site)), [
+		"Person",
+		"WebSite",
+	]);
+});
+
 test("the identity values come from site, not from package.json", () => {
-	const nodes = structuredDataFor({ url: "/" }, { pageType: "book" }, {}, site);
+	const nodes = structuredDataFor({ pageType: "book" }, {}, site);
 	const [person, book, website] = nodes;
 
 	assert.equal(person.name, "Test Author");
@@ -145,7 +157,6 @@ test("the identity values come from site, not from package.json", () => {
 
 test("a page's own description reaches the WebSite schema", () => {
 	const [, website] = structuredDataFor(
-		{ url: "/reviews/" },
 		{ description: "What readers are saying." },
 		{},
 		site,
@@ -156,7 +167,7 @@ test("a page's own description reaches the WebSite schema", () => {
 
 test("the serialised block carries no character HTML can read", () => {
 	const json = jsonForScriptElement(
-		structuredDataFor({ url: "/" }, { pageType: "book" }, {}, site),
+		structuredDataFor({ pageType: "book" }, {}, site),
 	);
 
 	// The book's title has an ampersand, so this block had one to escape.
@@ -177,7 +188,6 @@ test("a hostile event summary cannot terminate the script element", () => {
 	const hostile = "</script><img src=x onerror=alert(1)>";
 	const json = jsonForScriptElement(
 		structuredDataFor(
-			{ url: "/events/" },
 			{ pageType: "events" },
 			{
 				futureEvents: [
@@ -208,14 +218,13 @@ test("a hostile event summary cannot terminate the script element", () => {
 });
 
 test("the serialised block round-trips every page's nodes", () => {
-	for (const [url, metadata] of [
+	for (const [page, metadata] of [
 		["/", { pageType: "book" }],
 		["/events/", { pageType: "events" }],
 		["/author/", { pageType: "author" }],
 		["/reviews/", {}],
 	]) {
 		const nodes = structuredDataFor(
-			{ url },
 			metadata,
 			{ futureEvents: [{ summary: "Talk", startDateTime: "2099-09-21" }] },
 			site,
@@ -223,7 +232,7 @@ test("the serialised block round-trips every page's nodes", () => {
 		assert.deepEqual(
 			JSON.parse(jsonForScriptElement(nodes)),
 			nodes,
-			`${url} should survive serialisation unchanged`,
+			`${page} should survive serialisation unchanged`,
 		);
 	}
 });
