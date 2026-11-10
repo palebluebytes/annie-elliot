@@ -60,13 +60,10 @@ test.describe("SEO Checks", () => {
 			"https://annieelliot.co.uk/images/book-cover.jpg",
 		);
 
-		// Check fuzzy match for URL since it might vary locally vs production canonical
-		// But the layout code uses metadata.canonical OR constructed URL.
-		// Let's check if the tag exists and has a value similar to expected.
-		const ogUrl = await page
-			.locator('meta[property="og:url"]')
-			.getAttribute("content");
-		expect(ogUrl).toContain("annieelliot.co.uk");
+		await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+			"content",
+			"https://annieelliot.co.uk/",
+		);
 	});
 
 	test("should include Book JSON-LD schema", async ({ page }) => {
@@ -84,28 +81,76 @@ test.describe("SEO Checks", () => {
 		const schemas = await readJsonLd(page);
 		expect(schemas.filter((s) => s["@type"] === "Event")).toHaveLength(0);
 	});
+});
 
-	test("should have semantic review markup", async ({ page }) => {
+/**
+ * This assertion used to sit in the home-page block above, its whole body
+ * wrapped in `if ((await reviewsSection.count()) > 0)` — and the home page has
+ * carried no `#reviews` since that section moved to its own page, so the test
+ * passed without asserting anything. (It also looked for an `h3` reading
+ * "Reviews", which exists nowhere in the repo.) Re-pointed at the page the
+ * markup is actually on, with the guard removed so an absent section fails.
+ */
+test.describe("Reviews page markup", () => {
+	test("quotes are semantic figure/blockquote/figcaption", async ({ page }) => {
+		await page.goto("/reviews/");
+
+		await expect(page.locator("h1")).toHaveText("Reader Reviews");
+
 		const reviewsSection = page.locator("#reviews");
+		await expect(reviewsSection).toBeVisible();
 
-		// Only run if reviews section is present (it is on homepage)
-		if ((await reviewsSection.count()) > 0) {
-			// Check for figure, blockquote, figcaption
-			await expect(
-				reviewsSection.locator("figure.review-card").first(),
-			).toBeVisible();
-			await expect(
-				reviewsSection.locator("blockquote.quote").first(),
-			).toBeVisible();
-			await expect(
-				reviewsSection.locator("figcaption.reviewer").first(),
-			).toBeVisible();
+		const cards = reviewsSection.locator("figure.review-card");
+		expect(await cards.count()).toBeGreaterThan(0);
 
-			// Check for correct heading level
-			await expect(reviewsSection.locator("h3")).toBeVisible();
-			await expect(reviewsSection.locator("h3")).toHaveText("Reviews");
-		}
+		const first = cards.first();
+		await expect(first.locator("blockquote.quote")).toBeVisible();
+		await expect(first.locator("figcaption.reviewer")).toBeVisible();
 	});
+});
+
+/**
+ * A page's canonical, `og:url` and `twitter:url` must each name that page's own
+ * URL. They were resolved three times in the layout as
+ * `metadata.canonical || host + page.url`, and a global `metadata.canonical`
+ * made the fallback unreachable: Eleventy deep-merges data, so a page's own
+ * front-matter `metadata:` block merged *over* the global rather than replacing
+ * it, and every page without its own canonical shipped the bare host. `/reviews/`,
+ * `/email-success/` and `/email-failure/` all told Google they were duplicates of
+ * the home page.
+ *
+ * The host literal here is deliberately not imported from `src/_data/site.js` —
+ * this is an independent oracle, like the geometry in `tests/gallery.spec.js`.
+ */
+const EVERY_PAGE = [
+	"/",
+	"/author/",
+	"/contact/",
+	"/events/",
+	"/reviews/",
+	"/email-success/",
+	"/email-failure/",
+];
+
+test.describe("Per-page canonical", () => {
+	for (const url of EVERY_PAGE) {
+		test(`${url} names itself, not another page`, async ({ page }) => {
+			await page.goto(url);
+			const own = `https://annieelliot.co.uk${url}`;
+
+			await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+				"href",
+				own,
+			);
+			await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+				"content",
+				own,
+			);
+			await expect(
+				page.locator('meta[property="twitter:url"]'),
+			).toHaveAttribute("content", own);
+		});
+	}
 });
 
 /**

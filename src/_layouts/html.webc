@@ -36,15 +36,12 @@
 
 		<title @text="metadata.title"></title>
 		<meta name="description" :content="metadata.description" />
-		<meta name="author" content="Annie Elliot" />
+		<meta name="author" :content="site.author.name" />
 		<meta name="generator" :content="eleventy.generator" />
 		<meta name="creator" content="Pale Blue Bytes" />
 		<meta name="robots" content="index, follow" />
 		<meta name="theme-color" content="#a1866f" />
-		<link
-			rel="canonical"
-			:href="metadata.canonical || 'https://annieelliot.co.uk' + page.url"
-		/>
+		<link rel="canonical" :href="canonical" />
 
 		<link rel="manifest" href="/favicon/site.webmanifest" />
 		<link
@@ -94,30 +91,18 @@
 
 		<!-- Open Graph / Facebook -->
 		<meta property="og:type" content="website" />
-		<meta
-			property="og:url"
-			:content="metadata.canonical || 'https://annieelliot.co.uk' + page.url"
-		/>
+		<meta property="og:url" :content="canonical" />
 		<meta property="og:title" :content="metadata.title" />
 		<meta property="og:description" :content="metadata.description" />
-		<meta
-			property="og:image"
-			content="https://annieelliot.co.uk/images/book-cover.jpg"
-		/>
-		<meta property="og:site_name" content="Annie Elliot" />
+		<meta property="og:image" :content="site.url + site.coverImage" />
+		<meta property="og:site_name" :content="site.name" />
 
 		<!-- Twitter -->
 		<meta property="twitter:card" content="summary_large_image" />
-		<meta
-			property="twitter:url"
-			:content="metadata.canonical || 'https://annieelliot.co.uk' + page.url"
-		/>
+		<meta property="twitter:url" :content="canonical" />
 		<meta property="twitter:title" :content="metadata.title" />
 		<meta property="twitter:description" :content="metadata.description" />
-		<meta
-			property="twitter:image"
-			content="https://annieelliot.co.uk/images/book-cover.jpg"
-		/>
+		<meta property="twitter:image" :content="site.url + site.coverImage" />
 
 		<!-- Structured Data (JSON-LD) -->
 		<script
