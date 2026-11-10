@@ -213,3 +213,84 @@ test("the degenerate-row cap is the module's cap factor x target height", () => 
 	assert.equal(parseFloat(factor), ROW_HEIGHT_CAP_FACTOR);
 	assert.equal(parseFloat(height) * ROOT_FONT_SIZE, TARGET_ROW_HEIGHT);
 });
+
+// ------------------------------------------------- the degenerate gallery
+//
+// One or two photos. Reachable, not hypothetical: Annie owns the Drive folder
+// and `src/_data/gallery.js` only hard-fails on an EMPTY listing, so a folder
+// she has pruned to one photo builds happily. The packer has no choice with so
+// few items — a lone portrait wants a row 1731px tall at PACK_WIDTH — which is
+// what `src/reviews.webc`'s per-item `max-width` exists to hold back.
+//
+// Nothing covered this before: the cap was added, reshaped from a row-level
+// bound to a per-item one, and never exercised at the sizes that trigger it.
+
+const PORTRAIT = 0.67;
+const LANDSCAPE = 1.5;
+const CAP_PX = ROW_HEIGHT_CAP_FACTOR * TARGET_ROW_HEIGHT; // 528px at ratio 1
+
+/** The height a row of these ratios takes at the packing width. */
+const rowHeight = (ratios) =>
+	(PACK_WIDTH - ROW_GAP * (ratios.length - 1)) / ratios.reduce((a, b) => a + b);
+
+test("a lone photo still gets one row holding it", () => {
+	const rows = layOutRows([{ ratio: PORTRAIT }]);
+
+	assert.equal(rows.length, 1);
+	assert.equal(rows[0].length, 1);
+});
+
+test("two photos share one row rather than stacking", () => {
+	// Two rows of one would cost 2 x log(1731/352)^2; one row of two costs
+	// log(860/352)^2, which is six times less. The DP is what picks it, and
+	// stacking them would be the visible regression.
+	const rows = layOutRows([{ ratio: PORTRAIT }, { ratio: PORTRAIT }]);
+
+	assert.equal(rows.length, 1);
+	assert.equal(rows[0].length, 2);
+});
+
+test("the degenerate row is exactly what the cap is for", () => {
+	// The premise of the valve: with one photo the row blows through the ceiling
+	// the cap imposes. If this ever stops being true the cap is dead weight.
+	assert.ok(rowHeight([PORTRAIT]) > CAP_PX);
+	assert.ok(rowHeight([PORTRAIT, PORTRAIT]) > CAP_PX);
+
+	// ...and the live gallery never reaches it, which is why no shipping `sizes`
+	// string changes when the cap is applied.
+	assert.ok(rowHeight([PORTRAIT, PORTRAIT, LANDSCAPE]) < CAP_PX);
+});
+
+test("a capped thumbnail declares the width it will really get", () => {
+	const [[only]] = layOutRows([{ ratio: PORTRAIT }]);
+
+	// Uncapped this said 1160px — the whole container — for a slot CSS holds at
+	// 354px, pulling a rendition three times too wide.
+	const capped = Math.round(CAP_PX * PORTRAIT);
+	assert.equal(capped, 354);
+	assert.match(only.sizes, new RegExp(`\\) ${capped}px,`));
+	assert.ok(!only.sizes.includes(`${PACK_WIDTH}px`));
+});
+
+test("a capped thumbnail caps its fluid clause too", () => {
+	const [[only]] = layOutRows([{ ratio: PORTRAIT }]);
+
+	// Below the packed tier the container is fluid, so the cap can only be
+	// stated against the viewport. `min()` is valid in a source-size.
+	assert.match(only.sizes, /min\(100vw, 354px\)/);
+});
+
+test("an uncapped thumbnail's fluid clause stays a bare vw", () => {
+	// The live gallery's shape: the cap does not bind, so nothing is wrapped in
+	// min() and the strings are byte-identical to before the cap existed.
+	const rows = layOutRows([
+		{ ratio: PORTRAIT },
+		{ ratio: PORTRAIT },
+		{ ratio: LANDSCAPE },
+	]);
+
+	for (const item of rows.flat()) {
+		assert.doesNotMatch(item.sizes, /min\(/);
+		assert.match(item.sizes, /\d+vw, 100vw$/);
+	}
+});

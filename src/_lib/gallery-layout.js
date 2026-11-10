@@ -51,6 +51,16 @@ const MOSAIC_TIER = "40rem"; // below this the mosaic is one full-width column
  * width less the gaps its row spends. Below it the container is fluid and the
  * share is declared in `vw`; below the mosaic tier every photo is full width.
  *
+ * The degenerate-gallery cap is applied here too, because it is a width the
+ * browser is held to and `sizes` exists to tell the browser the truth. With a
+ * single photo the share is the whole row, so the uncapped arithmetic declares
+ * the full PACK_WIDTH while CSS holds the item at
+ * `ROW_HEIGHT_CAP_FACTOR * TARGET_ROW_HEIGHT * ratio` — 1160px declared against
+ * 354px rendered for a portrait, which pulls a rendition three times wider than
+ * the slot. The cap cannot bind for the live gallery (its tallest row is ~403px
+ * against the 528px ceiling), so this changes no `sizes` string that ships
+ * today; it only stops lying in the state the valve exists for.
+ *
  * @param {{ratio: number, rowRatioSum: number, rowCount: number}} item The
  *   item's own displayed ratio, its row's ratio sum and how many photos share
  *   the row — everything the packer knows and the browser does not.
@@ -58,9 +68,22 @@ const MOSAIC_TIER = "40rem"; // below this the mosaic is one full-width column
  */
 export function thumbnailSizes({ ratio, rowRatioSum, rowCount }) {
 	const share = ratio / rowRatioSum;
-	const packed = Math.round(share * (PACK_WIDTH - ROW_GAP * (rowCount - 1)));
+	const rowWidth = PACK_WIDTH - ROW_GAP * (rowCount - 1);
+	// The same bound src/reviews.webc applies as a max-width, in px.
+	const capPx = ROW_HEIGHT_CAP_FACTOR * TARGET_ROW_HEIGHT * ratio;
+
+	const packed = Math.round(Math.min(share * rowWidth, capPx));
 	const fluid = Math.round(share * 100);
-	return `(min-width: ${PACKED_TIER}) ${packed}px, (min-width: ${MOSAIC_TIER}) ${fluid}vw, 100vw`;
+	// Below the packed tier the container is fluid, so the cap can only be
+	// expressed against the viewport — `min()` is valid in a source-size, and the
+	// lightbox's own `sizes` already relies on it. Emitted only when the cap
+	// actually binds, so the shipping strings stay exactly as they were.
+	const fluidClause =
+		capPx < share * rowWidth
+			? `min(${fluid}vw, ${Math.round(capPx)}px)`
+			: `${fluid}vw`;
+
+	return `(min-width: ${PACKED_TIER}) ${packed}px, (min-width: ${MOSAIC_TIER}) ${fluidClause}, 100vw`;
 }
 
 /**
