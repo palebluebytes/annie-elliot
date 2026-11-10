@@ -1,18 +1,15 @@
-<script webc:setup>
-	// WebC converts kebab-case attributes to camelCase
-	// Access attributes (they may be undefined if not provided)
-	const fontSizeVal =
-		typeof fontSize !== "undefined" ? fontSize : "var(--step-0)";
-	const dotColorVal =
-		typeof dotColor !== "undefined" ? dotColor : "var(--battleship-gray)";
-	const marginVal = typeof margin !== "undefined" ? margin : "0";
-	const navLabelVal = typeof navLabel !== "undefined" ? navLabel : "Navigation";
-
-	// Link color is always white, underline is always battleship-gray
-	const styleVars = `--font-size: ${fontSizeVal}; --dot-color: ${dotColorVal}; --margin: ${marginVal};`;
-</script>
-
-<nav class="nav-links" :aria-label="navLabelVal" :style="styleVars">
+<!-- The site's navigation. One call site, src/_components/header.webc, so the
+	four parameters it used to take are inlined: a `webc:setup` block emulated
+	default attribute values and concatenated them into a `:style` literal that
+	the rules read back with their own fallbacks, for values whose one caller
+	passed two of them the defaults verbatim and never passed the other two.
+	Worse than redundant: `webc:setup` cannot see a component's attributes at
+	all, so `nav-label="Main navigation"` was resolving to the "Navigation"
+	default and no caller could ever have changed it. (A `:`/`@` expression in
+	the markup *can* read attributes — postcard-panel.webc and event-card.webc
+	do. Only `webc:setup` cannot.) A second navigation wanting different type
+	is the moment to add a parameter, and then it will have two callers. -->
+<nav class="nav-links" aria-label="Main navigation">
 	<a href="/">Home</a>
 	<span aria-hidden="true">•</span>
 	<a href="/author/">Author</a>
@@ -32,13 +29,12 @@
 		gap: var(--space-xs);
 		flex-wrap: wrap;
 		text-transform: uppercase;
-		margin: var(--margin, 0);
 	}
 
 	.nav-links a {
 		text-decoration: none;
 		color: var(--antiflash-white);
-		font-size: var(--font-size, var(--step-0));
+		font-size: var(--step-0);
 	}
 
 	.nav-links a:hover {
@@ -48,6 +44,6 @@
 	}
 
 	.nav-links span {
-		color: var(--dot-color, var(--battleship-gray));
+		color: var(--battleship-gray);
 	}
 </style>

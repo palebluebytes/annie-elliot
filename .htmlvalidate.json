@@ -4,13 +4,7 @@
 		"no-inline-style": [
 			"error",
 			{
-				"allowedProperties": [
-					"--r",
-					"--sum",
-					"--font-size",
-					"--dot-color",
-					"--margin"
-				]
+				"allowedProperties": ["--r"]
 			}
 		],
 		"doctype-style": ["error", { "style": "lowercase" }],
