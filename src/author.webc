@@ -12,7 +12,7 @@ metadata:
 		<div class="u-grid main-grid">
 			<img
 				webc:is="eleventy-image"
-				src="assets/images/author.png"
+				src="assets/images/author.jpg"
 				alt="Portrait of Annie Elliot"
 				sizes="(min-width: 60rem) 50vw, 100vw"
 			/>
@@ -68,10 +68,39 @@ metadata:
 		}
 
 		picture {
+			display: block;
+
 			img {
 				width: 100%;
-				height: auto;
 				display: block;
+				/*
+					The portrait is a 2:3 photograph, far taller than the prose beside
+					it. Cropped from the bottom, which is where the empty shoulder room
+					is, so the face survives whatever the frame becomes.
+				*/
+				aspect-ratio: 4 / 5;
+				height: auto;
+				object-fit: cover;
+				object-position: 50% 10%;
+			}
+
+			/*
+				Two columns: the photo takes its height from the prose, not the other
+				way round. A normally-flowed image is what sizes the grid row, so it
+				is taken out of flow — that leaves <picture> with no intrinsic height,
+				the row is measured from the text column alone, and the stretched
+				<picture> hands that height straight back to the image.
+			*/
+			@media all and (min-width: 60rem) {
+				position: relative;
+
+				img {
+					position: absolute;
+					inset: 0;
+					width: 100%;
+					height: 100%;
+					aspect-ratio: auto;
+				}
 			}
 		}
 	}
