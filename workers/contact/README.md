@@ -107,6 +107,15 @@ for itself. Add:
 `10` or `60`. Then redeploy. Until that is added the in-isolate window is the
 only limit in force.
 
+### Header injection
+
+`name` and `email` are visitor-supplied and land in `From`, `Subject` and
+`Reply-To`. Both are flattened before use — CR, LF and tabs collapsed to spaces
+and the value clamped in length — so a crafted field cannot append headers of
+its own. `Reply-To` is set only when the address matches a shape that excludes
+whitespace, commas, angle brackets and quotes; when it does not, the mail still
+sends, just without a `Reply-To`.
+
 ## Why it works this way
 
 The site ships no JavaScript, so there is no `fetch()` to post the form and

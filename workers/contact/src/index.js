@@ -4,6 +4,7 @@ const { createMimeMessage } = MimeText;
 
 const recipient = "author.annie.elliot@gmail.com";
 const sender = "info@annieelliot.co.uk";
+
 // One fact, three uses: the origin the form is allowed to post from, the origin
 // named in the CORS headers, and the base the redirect targets are resolved
 // against. Eleventy emits the two landing pages with trailing slashes; without
@@ -174,36 +175,48 @@ function pruneTrackedClients(cutoff) {
 	}
 }
 
+/**
+ * Flattens a form field to something that cannot break out of a MIME header.
+ * `name` and the sender's address are visitor-supplied and land in `From`,
+ * `Subject` and `Reply-To`; a bare CR or LF in any of them would otherwise let
+ * a caller append headers of its own.
+ */
+function headerSafe(value, maxLength = 200) {
+	return String(value ?? "")
+		.replace(/[\r\n\t]+/g, " ")
+		.trim()
+		.slice(0, maxLength);
+}
+
+// Deliberately permissive — it only has to admit real addresses while refusing
+// the whitespace, commas, angle brackets and quotes that carry an injection.
+const emailShape = /^[^\s@<>,;:"]+@[^\s@<>,;:"]+\.[^\s@<>,;:"]+$/;
+
 async function sendEmail(data, env) {
-	// Validate email
-	if (
-		!data.email ||
-		typeof data.email !== "string" ||
-		!data.email.includes("@")
-	) {
-		console.error("Invalid email address:", data.email);
-		// Don't set Reply-To if invalid, just send the message
+	const name = headerSafe(data.name);
+	const replyTo = headerSafe(data.email);
+	const usableReplyTo = emailShape.test(replyTo) ? replyTo : null;
+
+	if (!usableReplyTo) {
+		// Send anyway, but without a Reply-To — the message body still carries
+		// whatever the visitor typed.
+		console.error("Unusable reply address, sending without Reply-To");
 	}
 
 	const msg = createMimeMessage();
 	msg.setSender({
-		name: data.name,
+		name: name || "Website visitor",
 		addr: sender,
 	});
 	msg.setRecipient(recipient);
-	msg.setSubject(`A message from ${data.email}`);
+	msg.setSubject(`A message from ${usableReplyTo || name || "the website"}`);
 
-	// Safely attempt to set Reply-To
-	if (
-		data.email &&
-		typeof data.email === "string" &&
-		data.email.includes("@")
-	) {
+	if (usableReplyTo) {
 		try {
 			if (MimeText.Mailbox) {
-				msg.setHeader("Reply-To", new MimeText.Mailbox(data.email));
+				msg.setHeader("Reply-To", new MimeText.Mailbox(usableReplyTo));
 			} else {
-				msg.setHeader("Reply-To", { addr: data.email });
+				msg.setHeader("Reply-To", { addr: usableReplyTo });
 			}
 		} catch (e) {
 			console.warn("Failed to set Reply-To header:", e);
@@ -212,9 +225,9 @@ async function sendEmail(data, env) {
 
 	msg.addMessage({
 		contentType: "text/plain",
-		data: data.message,
+		data: String(data.message ?? ""),
 	});
 
-	var message = new EmailMessage(sender, recipient, msg.asRaw());
+	const message = new EmailMessage(sender, recipient, msg.asRaw());
 	await env.EMAIL.send(message);
 }
