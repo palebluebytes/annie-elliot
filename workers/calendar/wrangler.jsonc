@@ -5,6 +5,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "calendar",
+	// Pinned so wrangler cannot follow a cached account selection or a
+	// differently-scoped token to an account that does not host this
+	// worker — the failure there is "This Worker does not exist on your
+	// account", which reads like the worker is gone. Not a secret: it is
+	// in every dashboard URL.
+	"account_id": "eb2fcf5554cafc637c5f9bbdcc3b8d1e",
 	"main": "src/index.js",
 	"compatibility_date": "2025-09-24",
 	"observability": {
