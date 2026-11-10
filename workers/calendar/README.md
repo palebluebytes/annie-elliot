@@ -43,10 +43,15 @@ hours; when that is too slow, retry the deployment from the Cloudflare dashboard
 
 ```bash
 cd workers/calendar
-npm install
+pnpm install
 npx wrangler secret put DEPLOY_HOOK_URL   # first deploy, and after any rotation
 npx wrangler deploy
 ```
+
+**Install with `pnpm`.** `pnpm-lock.yaml` is this worker's only lockfile, so an
+`npm install` here writes a competing `package-lock.json` and installs a
+different resolution of `wrangler` than the one that was tested — the same trap
+[`AGENTS.md`](../../AGENTS.md) documents for the repository root.
 
 **Nothing takes effect until this worker is deployed.** It deploys separately
 from the site, and merging a change to the repository does not deploy it.
@@ -59,9 +64,13 @@ hard-coded in `src/index.js` in a **public repository**, so it must be treated
 as leaked. Removing it from the file does not remove it from the repository's
 git history, which is why rotation is the only real fix.
 
-1. **Rotate the hook.** Cloudflare dashboard → the Pages project → _Settings_ →
-   _Builds & deployments_ → _Deploy hooks_: delete the existing hook and create
-   a new one. Copy the new URL.
+1. **Rotate the hook.** Cloudflare dashboard → _Workers & Pages_ → the Pages
+   project → _Settings_ → _Builds_ → _Deploy hooks_: **delete** the existing
+   hook, then _Add deploy hook_, and copy the new URL. A hook cannot be rotated
+   in place — its URL _is_ the credential, so a new one is a new URL. Delete
+   before you create: that is the only thing that makes the exposed hook inert,
+   and it costs at most one missed nightly rebuild, which the dashboard's
+   "Retry deployment" covers in the meantime.
 2. **Set it as a secret on this worker**, then redeploy:
 
    ```bash

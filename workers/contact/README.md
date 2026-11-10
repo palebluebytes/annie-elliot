@@ -149,7 +149,7 @@ redirect URLs are derived from it. The site half cannot be fixed from here.
 
 ```bash
 cd workers/contact
-npm install
+pnpm install
 npx wrangler deploy
 ```
 
