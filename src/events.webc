@@ -49,29 +49,12 @@ metadata:
 	<h2 class="u-section-title section-heading">Upcoming Events</h2>
 
 	<div webc:if="$data.calendar.futureEvents.length > 0">
-		<div class="event-wrapper" webc:for="event of $data.calendar.futureEvents">
-			<div class="event-card ornate-frame">
-				<h3 @text="event.summary"></h3>
-				<p webc:if="event.isMultiDay">
-					<strong>Dates<span class="label-colon">:</span> </strong
-					><span @text="event.start"></span> –
-					<span @text="event.end"></span>
-				</p>
-				<p webc:if="!event.isMultiDay">
-					<strong>Date<span class="label-colon">:</span> </strong
-					><span @text="event.start"></span>
-				</p>
-				<p webc:if="event.location">
-					<strong>Location<span class="label-colon">:</span> </strong
-					><a
-						:href="'https://maps.google.com?q=' + (event.location || '')"
-						:aria-label="'View location for ' + event.summary"
-						><span @text="event.location || 'View Map'"></span
-					></a>
-				</p>
-				<p @text="event.description"></p>
-			</div>
-		</div>
+		<event-card
+			webc:nokeep
+			webc:for="event of $data.calendar.futureEvents"
+			:event="event"
+			:is-past="false"
+		></event-card>
 	</div>
 
 	<div webc:if="$data.calendar.futureEvents.length === 0">
@@ -81,32 +64,12 @@ metadata:
 	<div webc:if="$data.calendar.pastEvents.length > 0">
 		<h2 class="u-section-title section-heading">Past Events</h2>
 
-		<div
-			class="event-wrapper is-past"
+		<event-card
+			webc:nokeep
 			webc:for="event of $data.calendar.pastEvents"
-		>
-			<div class="event-card ornate-frame">
-				<h3 @text="event.summary"></h3>
-				<p webc:if="event.isMultiDay">
-					<strong>Dates<span class="label-colon">:</span> </strong
-					><span @text="event.start"></span> –
-					<span @text="event.end"></span>
-				</p>
-				<p webc:if="!event.isMultiDay">
-					<strong>Date<span class="label-colon">:</span> </strong
-					><span @text="event.start"></span>
-				</p>
-				<p webc:if="event.location">
-					<strong>Location<span class="label-colon">:</span> </strong
-					><a
-						:href="'https://maps.google.com?q=' + (event.location || '')"
-						:aria-label="'View location for ' + event.summary"
-						><span @text="event.location || 'View Map'"></span
-					></a>
-				</p>
-				<p @text="event.description"></p>
-			</div>
-		</div>
+			:event="event"
+			:is-past="true"
+		></event-card>
 	</div>
 </section>
 
@@ -115,7 +78,15 @@ metadata:
 	   corners keep a fixed size and only the straight edges stretch, each along
 	   its own axis. Used the same way everywhere eventFrame.svg wraps content
 	   (the featured testimonial and every event card) so the frame never
-	   distorts, whatever the height of what it surrounds. */
+	   distorts, whatever the height of what it surrounds.
+
+	   Here, not in src/_components/event-card.webc, even though the card wears
+	   it: the featured testimonial above wears it too, and a component's
+	   <style> is bundled only when the component renders — so on a build with
+	   no events at all (both lists empty) the testimonial would silently lose
+	   its frame. Not in page-furniture.css either: that module is the
+	   furniture EVERY page needs, and this is one page's ornament, inlined
+	   into the critical CSS of all seven if it went there. */
 	.ornate-frame {
 		border-style: solid;
 		border-width: 46px 40px;
@@ -269,29 +240,6 @@ metadata:
 			}
 		}
 
-		.event-wrapper {
-			margin: var(--space-m) auto;
-			max-width: 700px;
-			padding: var(--space-s);
-		}
-
-		/* Past events read as faded, but the fade composites the body text
-		   against the cream page: at 0.7 the taupe lands on #7b766c, which is
-		   4.33:1 and fails WCAG AA. 0.8 keeps the card visibly dimmed while
-		   holding the text above the 4.5:1 floor. */
-		.event-wrapper.is-past {
-			opacity: 0.8;
-		}
-
-		/* Frame comes from .ornate-frame; the border-width supplies the inset, so
-		   the card needs no padding of its own. */
-		.event-card {
-			background-color: transparent;
-			text-align: center;
-			box-shadow: none;
-			position: relative;
-		}
-
 		.section-heading {
 			font-family: var(--font-base);
 			font-size: var(--step-3);
@@ -306,47 +254,6 @@ metadata:
 			text-align: center;
 			border-bottom: 1px solid var(--light-beige);
 			padding-bottom: var(--space-xs);
-		}
-
-		.event-card h3 {
-			font-family: var(--font-base);
-			color: var(--taupe);
-			font-size: var(--step-2);
-			margin-bottom: var(--space-xs);
-			margin-top: 0;
-			font-weight: 700;
-			line-height: 1.2;
-		}
-
-		.event-card p {
-			font-size: var(--step-0);
-			color: var(--taupe);
-			line-height: 1.6;
-			margin: var(--space-xs) 0;
-		}
-
-		.event-card p:last-of-type {
-			margin-top: var(--space-xs);
-			font-family: var(--font-italic);
-			line-height: 1.7;
-		}
-
-		/* On phones, stack each label above its value ("Date" / "Location" on
-		   their own line, colon dropped) so long values — addresses, map links —
-		   don't crowd the label on a narrow card. */
-		@media (max-width: 40rem) {
-			.event-card p strong {
-				display: block;
-			}
-
-			.event-card p .label-colon {
-				display: none;
-			}
-		}
-
-		.event-card em {
-			font-family: var(--font-italic);
-			font-style: italic;
 		}
 
 		.no-events {
