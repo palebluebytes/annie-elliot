@@ -39,31 +39,39 @@ a page's data cascade. This project registers none, so the argument arrives as
 `{ eleventy }` — `page`, `metadata` and `calendar` are all absent.
 
 Anything that varies per page belongs in `eleventyComputed` in a `*.11tydata.js`
-file: `src/src.11tydata.js` computes `structuredDataJson` this way, and
-`src/index.11tydata.js` the LCP preload.
+file: `src/src.11tydata.js` computes `structuredDataJson` this way.
 
 Get this wrong and every page silently receives the same value. The JSON-LD did
 exactly that — Book on all seven pages, Event on none — and nothing failed:
 the build was green, the pages rendered, and the schema was wrong everywhere.
 `tests/seo.spec.js` "Per-page structured data" is the guard.
 
-## The book cover's image options live in two files and must match
+## The book cover is an inline SVG, not an image file
 
-`src/index.11tydata.js` pre-runs `eleventy-img` on the cover to emit an LCP
-`<link rel="preload">`. It only lines up with the in-memory cache if its options
-match what `src/index.webc` asks for:
+`src/index.webc` draws the "coming soon" cover as inline `<svg>` markup. It is
+inline on purpose: an SVG loaded through `<img src="…">` is an isolated
+document that does not get the page's `@font-face` faces, so the title would
+quietly render in a system font instead of Playfair.
 
-| `src/index.webc`                                                  | `src/index.11tydata.js`         |
-| ----------------------------------------------------------------- | ------------------------------- |
-| `width="400, 640, 800, 1000"` (line 28)                           | `widths: [400, 640, 800, 1000]` |
-| `sizes="(min-width: 60rem) min(34rem, 42vw), calc(100vw - 3rem)"` | `LCP_SIZES`                     |
+That also means the cover is no longer the LCP _image_, and there is no
+`src/index.11tydata.js` any more — it existed only to pre-run `eleventy-img` on
+the cover and emit a matching `<link rel="preload">`, options duplicated across
+two files. Restoring a raster cover means restoring both, and the two option
+sets have to match exactly or you get a redundant transcode plus a preload the
+browser never uses.
 
-Note the attribute is `width` (singular) in WebC and it **overrides the plugin's
-`widths`** in `eleventy.config.js`. Quality and formats must still match the
-plugin config.
+`src/static/images/book-cover.jpg` is the **same placeholder rendered to a
+raster twin**, 1000×1500, and it is what `og:image`, `twitter:image` and the
+`Book` JSON-LD point at (`html.webc`, `src/_lib/structuredData.js`, asserted by
+`tests/seo.spec.js`). No page renders it — it exists only for social cards and
+crawlers, so nothing in the build or the test suite compares it against the
+inline SVG.
 
-Get this wrong and you get a second, redundant transcode plus a preload the
-browser never uses — a slower page, a green build, and no error anywhere.
+**Change the SVG and the JPG silently goes stale**: the site shows one cover
+and every share card shows another. Re-render it by loading the `<svg>` markup
+and the `.cover__placeholder` rules into a 1000×1500 page and screenshotting it
+with the pinned chromium — the fonts must come from `src/static/fonts/`, or the
+twin renders in a system face and no longer matches.
 
 ## Gallery geometry is duplicated across three layers
 
@@ -97,9 +105,9 @@ page under the visual baselines.
 
 ## Image `src` is relative to the working directory, not to `src/`
 
-`src/author.webc` uses `src="assets/images/author.png"` → the repo-root
-`assets/`. `src/index.webc` uses `src="src/static/images/book-cover.jpg"`. Both
-resolve from the process CWD.
+`src/author.webc` uses `src="assets/images/author.jpg"` → the repo-root
+`assets/`, and `src/_components/header.webc` uses
+`src="assets/images/separator.webp"`. Both resolve from the process CWD.
 
 ## Never deploy `dist-test/`
 
