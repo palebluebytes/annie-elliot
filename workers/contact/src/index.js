@@ -4,7 +4,13 @@ const { createMimeMessage } = MimeText;
 
 const recipient = "author.annie.elliot@gmail.com";
 const sender = "info@annieelliot.co.uk";
-const allowedOrigin = "https://annieelliot.co.uk";
+// One fact, three uses: the origin the form is allowed to post from, the origin
+// named in the CORS headers, and the base the redirect targets are resolved
+// against. Eleventy emits the two landing pages with trailing slashes; without
+// them every submission pays an extra redirect hop.
+const siteOrigin = "https://annieelliot.co.uk";
+const successUrl = new URL("/email-success/", siteOrigin).href;
+const failureUrl = new URL("/email-failure/", siteOrigin).href;
 
 export default {
 	async fetch(request, env) {
@@ -31,10 +37,10 @@ export default {
 			const formData = await request.formData();
 			const data = Object.fromEntries(formData);
 			await sendEmail(data, env);
-			return Response.redirect(`${allowedOrigin}/email-success`, 303);
+			return Response.redirect(successUrl, 303);
 		} catch (e) {
 			console.error("Email error:", e);
-			return Response.redirect(`${allowedOrigin}/email-failure`, 303);
+			return Response.redirect(failureUrl, 303);
 		}
 	},
 };
@@ -43,12 +49,12 @@ function isValidOrigin(request) {
 	const origin =
 		request.headers.get("Origin") || request.headers.get("Referer");
 
-	return origin && origin.startsWith(allowedOrigin);
+	return origin && origin.startsWith(siteOrigin);
 }
 
 function getCorsHeaders() {
 	return {
-		"Access-Control-Allow-Origin": allowedOrigin,
+		"Access-Control-Allow-Origin": siteOrigin,
 		"Access-Control-Allow-Methods": "POST",
 		"Access-Control-Allow-Headers": "Content-Type",
 	};

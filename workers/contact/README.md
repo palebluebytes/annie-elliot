@@ -15,7 +15,10 @@ The form in `src/contact.webc` posts directly to this worker:
 
 On a valid POST it builds a MIME message with `mimetext`, sends it through the
 Cloudflare Email binding, and answers with a **303 redirect** back to
-`/email-success` or `/email-failure` on the main site.
+`/email-success/` or `/email-failure/` on the main site. Those two URLs are
+derived from the one origin constant in `src/index.js`, so the host is stated
+once; the trailing slashes match what Eleventy emits, and leaving them off costs
+every submission an extra redirect hop.
 
 |            |                                              |
 | ---------- | -------------------------------------------- |
@@ -39,6 +42,21 @@ The `Reply-To` header is what makes replying work: the mail is _sent_ by
 `info@annieelliot.co.uk` because Cloudflare Email Routing will only send as a
 verified address, so the visitor's address has to travel in `Reply-To` instead of
 `From`.
+
+### Facts still stated on both sides of the divide
+
+The site and the worker deploy separately, so a handful of facts are written
+down twice and nothing errors when they disagree:
+
+- **this worker's URL** — `src/contact.webc` (the form's `action`) and
+  `wrangler.jsonc` (`routes[0].pattern`),
+- **the site's origin** — `wrangler.jsonc`'s route host shares the registrable
+  domain with the `siteOrigin` constant in `src/index.js`,
+- **the two redirect paths** — the Eleventy pages that emit `/email-success/`
+  and `/email-failure/`, and the constants here.
+
+Within the worker that duplication is gone: the origin is written once and the
+redirect URLs are derived from it. The site half cannot be fixed from here.
 
 ## Deploying
 
