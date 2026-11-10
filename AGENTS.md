@@ -73,19 +73,33 @@ and the `.cover__placeholder` rules into a 1000×1500 page and screenshotting it
 with the pinned chromium — the fonts must come from `src/static/fonts/`, or the
 twin renders in a system face and no longer matches.
 
-## Gallery geometry is duplicated across three layers
+## Gallery geometry has one home — `src/_lib/gallery-layout.js`
 
-These describe the same container and must move together:
+`PACK_WIDTH = 1160`, `ROW_GAP = 8`, `TARGET_ROW_HEIGHT = 352`,
+`ROW_HEIGHT_CAP_FACTOR = 1.5` and the two tiers the thumbnails' `sizes` declares
+against (`77.5rem`, `40rem`) all live in that module and nowhere else. It emits
+each item's **finished** `sizes` string, so no template composes the arithmetic:
 
-| File                         | Values                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------- |
-| `src/_lib/gallery-layout.js` | `PACK_WIDTH = 1160`, `ROW_GAP = 8`, `TARGET_ROW_HEIGHT = 352`                         |
-| `src/reviews.webc`           | `--gap: 0.5rem`, and the `1160` / `8` in the thumbnails' `sizes` expression           |
-| `tests/gallery.spec.js`      | `PACK_WIDTH = 1160`, `ROW_GAP = 8` — an independent oracle, deliberately not imported |
-| `tests/helpers/viewport.js`  | `MOSAIC_MIN_WIDTH = 640`, matching the `39.9375rem` CSS tier                          |
+| File                                | What it holds now                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/_lib/gallery-layout.js`        | all five constants, both tiers, and `layOutRows()` / `thumbnailSizes()` — the one home                  |
+| `src/reviews.webc`                  | `:sizes="item.sizes"` and two CSS lengths only: `--gap: 0.5rem` and `calc(1.5 * 22rem * var(--r))`      |
+| `tests/unit/gallery-layout.test.js` | **imports** the constants, and reads those two CSS lengths back out of the template to check them       |
+| `tests/gallery.spec.js`             | `PACK_WIDTH = 1160`, `ROW_GAP = 8` — a deliberate independent oracle, asserted against the rendered DOM |
+| `tests/helpers/viewport.js`         | `MOSAIC_MIN_WIDTH = 640`, matching the `39.9375rem` CSS tier                                            |
 
-Change one and the layout drifts from what the tests assert, or the `sizes`
-attribute starts lying to the browser about how wide the image will be.
+The two CSS lengths exist because CSS cannot import JavaScript: the gap the rows
+are actually drawn with, and the degenerate-row cap, which has to be a `calc` the
+browser evaluates per item. Both are checked against the module's exports by
+`tests/unit/gallery-layout.test.js`, which reads them out of `src/reviews.webc` —
+so a drift there reds a unit test instead of quietly making the `sizes` attribute
+lie to the browser about how wide the image will be.
+
+`tests/gallery.spec.js` restating the formula is **deliberate and stays**: it
+imports nothing and asserts against the DOM, which is the only thing in the suite
+that can catch the module and the page agreeing with each other but not with the
+browser. A copy inside the unit test of the owning module was not the same thing,
+and is gone.
 
 ## Fixtures are two-sided
 
