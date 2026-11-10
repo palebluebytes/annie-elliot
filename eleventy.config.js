@@ -64,26 +64,6 @@ export default function (eleventyConfig) {
 	eleventyConfig.addPassthroughCopy({ "src/static/images": "images" });
 	eleventyConfig.addPassthroughCopy({ "src/static/favicon": "favicon" });
 	eleventyConfig.addPassthroughCopy({ "src/robots.txt": "robots.txt" });
-
-	// Transform to unescape JSON-LD after WebC/Eleventy processing
-	eleventyConfig.addTransform("unescape-json-ld", function (content) {
-		if (this.page.outputPath && this.page.outputPath.endsWith(".html")) {
-			return content.replace(
-				/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g,
-				(match, p1) => {
-					// Unescape common HTML entities that WebC might have injected
-					const unescaped = p1
-						.replace(/&amp;/g, "&")
-						.replace(/&quot;/g, '"')
-						.replace(/&#39;/g, "'")
-						.replace(/&lt;/g, "<")
-						.replace(/&gt;/g, ">");
-					return `<script type="application/ld+json">${unescaped}</script>`;
-				},
-			);
-		}
-		return content;
-	});
 }
 
 export const config = {
