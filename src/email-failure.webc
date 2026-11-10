@@ -1,3 +1,9 @@
+---
+metadata:
+  title: "Message Not Sent | Contact Annie Elliot"
+  description: "Your message to Annie Elliot could not be sent. Please try again, or reach the author another way."
+---
+
 <section id="email-failure" class="postcard u-container">
 	<h1>Message Could Not Be Sent</h1>
 	<div class="postcard-wrapper">
