@@ -251,9 +251,17 @@ it validates also keeps the gate offline, like every other step in it.
 To validate a real production build before a deploy, run `npm run build` and then
 `npm run test:html:live`, which reads `dist/`.
 
-`no-inline-style` stays on, with an allowlist for the CSS custom properties that
-components legitimately set per instance (the gallery's `--r` / `--sum`, the nav's
-`--font-size` / `--dot-color` / `--margin`). Any other inline style is still an error.
+`no-inline-style` stays on, with an allowlist of exactly one CSS custom property:
+the gallery's `--r`. It is the only one left because it is the only per-instance
+value the markup genuinely cannot hand over any other way — each photo's own
+aspect ratio, which drives its `flex` grow and its degenerate-row `max-width`, so
+there is one distinct value per `<figure>`. The other four are gone rather than
+allowed: the nav's `--font-size`, `--dot-color` and `--margin` were parameters
+whose callers only ever passed the defaults, now plain declarations in the
+component's `<style>`; and the row's `--sum` disappeared when the degenerate-row
+cap moved from a per-row test against the row's ratio sum to a per-item one
+against `--r`, which leaves the row with no inline style at all. Any other
+inline style is still an error.
 
 ### Occasional checks
 

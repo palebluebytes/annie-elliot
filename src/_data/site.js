@@ -21,7 +21,13 @@ export default {
 	/** `og:site_name`, and the display name in the `WebSite` schema. */
 	name: "Annie Elliot",
 
-	/** The description a page falls back to when it declares none of its own. */
+	/**
+	 * The `WebSite` schema's description, and only that. The `<meta
+	 * name="description">` in `_layouts/html.webc` reads `metadata.description`
+	 * with no fallback, so a page that declared none would simply ship without
+	 * one — all seven declare theirs. `_lib/structuredData.js` is the single
+	 * reader that falls back here.
+	 */
 	description:
 		"A website for the novel Mr & Mrs Charles Dickens: Her Story by the author Annie Elliot",
 

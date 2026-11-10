@@ -1,9 +1,3 @@
-<!-- The postcard: a titled panel with a double-ruled, paper-textured border.
-	/contact/, /email-success/ and /email-failure/ are all this shape and each
-	used to hold its own ~40-line copy of it. Call it with `webc:nokeep`, so
-	the rendered markup is the <section> it always was. Attributes arrive in
-	`:`/`@` expressions but NOT in a `webc:setup` block — see nav-links.webc —
-	which is why there is no setup block here. -->
 <section :id="panelId" class="postcard u-container">
 	<h1 class="u-page-title" @text="heading"></h1>
 	<div class="postcard-wrapper">
@@ -14,6 +8,16 @@
 </section>
 
 <style>
+	/* The postcard: a titled panel with a double-ruled, paper-textured border.
+	   /contact/, /email-success/ and /email-failure/ are all this shape and each
+	   used to hold its own ~40-line copy of it. Call it with `webc:nokeep`, so
+	   the rendered markup is the <section> it always was. Attributes arrive in
+	   `:`/`@` expressions but NOT in a `webc:setup` block — see nav-links.webc —
+	   which is why there is no setup block here.
+
+	   In the stylesheet rather than an HTML comment above the markup: the
+	   <style> block is emitted once per page, the markup once per render. */
+
 	.postcard {
 		font-family: var(--font-base);
 		padding-block: var(--space-l);

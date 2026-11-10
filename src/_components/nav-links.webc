@@ -1,14 +1,3 @@
-<!-- The site's navigation. One call site, src/_components/header.webc, so the
-	four parameters it used to take are inlined: a `webc:setup` block emulated
-	default attribute values and concatenated them into a `:style` literal that
-	the rules read back with their own fallbacks, for values whose one caller
-	passed two of them the defaults verbatim and never passed the other two.
-	Worse than redundant: `webc:setup` cannot see a component's attributes at
-	all, so `nav-label="Main navigation"` was resolving to the "Navigation"
-	default and no caller could ever have changed it. (A `:`/`@` expression in
-	the markup *can* read attributes — postcard-panel.webc and event-card.webc
-	do. Only `webc:setup` cannot.) A second navigation wanting different type
-	is the moment to add a parameter, and then it will have two callers. -->
 <nav class="nav-links" aria-label="Main navigation">
 	<a href="/">Home</a>
 	<span aria-hidden="true">•</span>
@@ -22,6 +11,21 @@
 </nav>
 
 <style>
+	/* The site's navigation. One call site, src/_components/header.webc, so the
+	   four parameters it used to take are inlined: a `webc:setup` block emulated
+	   default attribute values and concatenated them into a `:style` literal that
+	   the rules read back with their own fallbacks, for values whose one caller
+	   passed two of them the defaults verbatim and never passed the other two.
+	   Worse than redundant: `webc:setup` cannot see a component's attributes at
+	   all, so `nav-label="Main navigation"` was resolving to the "Navigation"
+	   default and no caller could ever have changed it. (A `:`/`@` expression in
+	   the markup *can* read attributes — postcard-panel.webc and event-card.webc
+	   do. Only `webc:setup` cannot.) A second navigation wanting different type
+	   is the moment to add a parameter, and then it will have two callers.
+
+	   In the stylesheet rather than an HTML comment above the markup: the
+	   <style> block is emitted once per page, the markup once per render. */
+
 	.nav-links {
 		display: flex;
 		justify-content: center;

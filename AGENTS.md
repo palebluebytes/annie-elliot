@@ -142,11 +142,13 @@ A rule shared by things that are not all components belongs in
 `src/_layouts/page-furniture.css`, which is linked by the layout and therefore
 unconditional.
 
-Related, and the reason the event card's documentation lives in its `<style>`
-block rather than above its markup: **a comment inside a component's markup is
-emitted once per render**, and nothing in this pipeline strips comments. A
-paragraph above the card's markup became seven copies of itself in
-`/events/`. The `<style>` block is emitted once per page.
+Related: **put a component's documentation in its `<style>` block, which is
+emitted once per page however many times the component renders.** A comment in a
+component's markup is emitted once per _render_ and nothing in this pipeline
+strips comments, so the cost scales with render count: the event card's
+rationale above its markup shipped seven copies of itself on `/events/`, one per
+event. For a component that renders once a page it is mild — but the `<style>`
+block is the right home either way, so there is no case to judge.
 
 ## `webc:setup` cannot read a component's attributes
 

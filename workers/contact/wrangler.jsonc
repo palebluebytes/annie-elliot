@@ -16,6 +16,29 @@
 			"name": "EMAIL",
 		},
 	],
+	/**
+	 * The per-IP limit `src/index.js` reads as `env.RATE_LIMITER`. Cloudflare's
+	 * built-in Rate Limiting binding, so it needs no dashboard resource and no
+	 * account id: declaring it here is the whole provisioning step. Counted per
+	 * colo across isolates, which is what the in-isolate `Map` in the worker
+	 * cannot be — that `Map` is per-isolate and empty after every cold start, so
+	 * until this existed the deployed limit was far looser than the code reads.
+	 *
+	 * `limit` / `period` must stay in step with `rateLimit` in `src/index.js`
+	 * (5 requests / 60 seconds). `period` accepts only 10 or 60. `namespace_id`
+	 * is an arbitrary identifier scoped to this Worker — it names nothing
+	 * outside this file, and changing it resets the counters.
+	 */
+	"ratelimits": [
+		{
+			"name": "RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 5,
+				"period": 60,
+			},
+		},
+	],
 	"routes": [
 		{
 			"pattern": "contact.annieelliot.co.uk",
